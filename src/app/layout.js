@@ -1,10 +1,6 @@
 import React from "react";
-import { ThemeProvider } from "@mui/material/styles";
-import { NextAuthProvider } from "@/components/providers/NextAuthProvider";
-import CssBaseline from "@mui/material/CssBaseline";
-import theme from "@/theme/theme";
-
-import Navbar from "@/components/Navbar";
+import DrawerAppBar from "@/components/Navbar";
+import MuiProviders from '@/app/provider';
 
 export const metadata = {
   title: "Sipras",
@@ -13,16 +9,13 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id">
+    <html lang="en">
       <body>
-        <NextAuthProvider>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <Navbar />
-        {children}
-        </ThemeProvider>
-        </NextAuthProvider>
+        <MuiProviders>
+          <DrawerAppBar />
+          {children}
+        </MuiProviders>
       </body>
     </html>
   );
-}
+};
