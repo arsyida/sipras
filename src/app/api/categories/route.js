@@ -4,11 +4,11 @@ import { NextResponse } from 'next/server'; // Impor NextResponse
 import connectToDatabase from '@/lib/db';   // Pastikan path sudah benar
 import Category from '@/models/Category';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]/route'; // Pastikan path sudah benar
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Pastikan path sudah benar
 import { validateAdmin } from '@/lib/api'; // Pastikan path sudah benar
 
 // --- HANDLER UNTUK GET REQUEST ---
-export async function GET(request) { // Perubahan 1: Hanya menerima 'request'
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
