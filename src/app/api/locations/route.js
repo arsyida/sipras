@@ -1,52 +1,86 @@
-// Lokasi file: /src/app/api/categories/route.js
+// Lokasi: /src/app/api/locations/route.js
 
-import { NextResponse } from 'next/server'; // Impor NextResponse
-import connectToDatabase from '@/lib/db';   // Pastikan path sudah benar
-import Location from '@/models/Location';
+import { NextResponse } from 'next/server';
+import connectToDatabase from '@/lib/db';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]/route'; // Pastikan path sudah benar
-import { validateAdmin } from '@/lib/api'; // Pastikan path sudah benar
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { validateAdmin } from '@/lib/api';
+import Location from '@/models/Location';
 
-// --- HANDLER UNTUK GET REQUEST ---
-export async function GET(request) { // Perubahan 1: Hanya menerima 'request'
+/**
+ * Mengambil daftar semua lokasi.
+ * Diurutkan berdasarkan gedung, lantai, dan nama.
+ * @param {Request} request - Objek request masuk (tidak digunakan).
+ * @returns {Promise<NextResponse>} - Respons JSON berisi array data lokasi atau pesan error.
+ */
+export async function GET(request) {
   try {
+    // Validasi Sesi (semua pengguna yang login boleh melihat daftar lokasi)
     const session = await getServerSession(authOptions);
-
-    const validationResponse = validateAdmin(session);
-    if (!validationResponse.success) {
-      return NextResponse.json(validationResponse);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     await connectToDatabase();
 
-    const locations = await Location.find({}).sort({ name: 1 });
-    // Perubahan 3: Gunakan NextResponse untuk mengirim response
-    return NextResponse.json({ success: true, status: 200, data: locations }, { status: 200 });
+    // Ambil semua lokasi dan urutkan
+    const locations = await Location.find({}).sort({ building: 1, floor: 1, name: 1 });
+
+    // Respons yang lebih baik jika tidak ada data ditemukan
+    if (!locations || locations.length === 0) {
+      return NextResponse.json({ success: true, data: [], message: "Tidak ada lokasi ditemukan." }, { status: 200 });
+    }
+
+    return NextResponse.json({ success: true, data: locations }, { status: 200 });
 
   } catch (error) {
-    return NextResponse.json({ success: false, status: 500, message: error.message }, { status: 500 });
+    console.error("Error in GET /api/locations:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
 
-// --- HANDLER UNTUK POST REQUEST ---
+/**
+ * Membuat lokasi baru.
+ * Hanya admin yang dapat melakukan aksi ini.
+ * @param {Request} request - Objek request masuk yang berisi body JSON dengan data lokasi.
+ * @returns {Promise<NextResponse>} - Respons JSON berisi data lokasi yang baru dibuat atau pesan error.
+ */
 export async function POST(request) {
   try {
+    // Validasi Sesi & Hak Akses Admin
     const session = await getServerSession(authOptions);
-
     const validationResponse = validateAdmin(session);
     if (!validationResponse.success) {
-      return NextResponse.json(validationResponse);
+      return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
     }
-    
-    // Perubahan 4: Ambil body dari request
-    const body = await request.json();
+
+    const data = await request.json();
+
+    // Validasi input dasar
+    if (!data.name || !data.building || !data.floor) {
+        return NextResponse.json({ success: false, message: "Nama, Gedung, dan Lantai tidak boleh kosong." }, { status: 400 });
+    }
 
     await connectToDatabase();
 
-    const locations = await Location.create(body);
-    return NextResponse.json({ success: true, status: 201, data: locations }, { status: 201 });
+    // Buat dokumen baru di database
+    const newLocation = await Location.create(data);
+
+    if (!newLocation) {
+        return NextResponse.json({ success: false, message: "Gagal membuat lokasi di database." }, { status: 500 });
+    }
+    
+    return NextResponse.json({ success: true, data: newLocation }, { status: 201 });
 
   } catch (error) {
-    return NextResponse.json({ success: false, status: 400, message: error.message }, { status: 400 });
+    // Penanganan error untuk duplikasi data berdasarkan index unik
+    if (error.code === 11000) {
+      return NextResponse.json({
+        success: false,
+        message: 'Gagal membuat lokasi. Kombinasi Nama, Gedung, dan Lantai sudah ada.',
+      }, { status: 409 }); // 409 Conflict
+    }
+    console.error("Error in POST /api/locations:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
   }
 }
