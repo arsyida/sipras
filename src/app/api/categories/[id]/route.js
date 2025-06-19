@@ -1,72 +1,119 @@
 // Lokasi: /src/app/api/categories/[id]/route.js
 
-import { NextResponse } from 'next/server'; 
-import connectToDatabase from '@/lib/db';  
+import { NextResponse } from 'next/server';
+import connectToDatabase from '@/lib/db';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { validateAdmin } from '@/lib/api';
 import Category from '@/models/Category';
+import Product from '@/models/Product'; // Impor Product untuk validasi delete
 
-export async function GET(req,{ params }) {
-  const { id: _id} = await params;
+/**
+ * Mengambil detail satu kategori berdasarkan ID-nya.
+ * @param {Request} request - Objek request masuk (tidak digunakan di sini).
+ * @param {{ params: { id: string } }} context - Konteks berisi parameter dinamis dari URL.
+ * @returns {Promise<NextResponse>} - Respons JSON berisi data kategori atau pesan error.
+ */
+export async function GET(request, { params }) {
   try {
+    // Validasi Sesi & Hak Akses (Staf biasa boleh melihat detail)
     const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
 
-    const validationResponse = validateAdmin(session);
-    if (!validationResponse.success) {
-      return NextResponse.json(validationResponse, { status: 403 });
-    }
     await connectToDatabase();
-    const categories = await Category.find({_id});
-    if (!categories || categories.length === 0) {
-      return NextResponse.json({ success: false, status: 404, message: 'Kategori tidak ditemukan.' }, { status: 404 });
+    
+    // Gunakan findById untuk mendapatkan satu dokumen, lebih efisien daripada find.
+    const category = await Category.findById(params.id);
+
+    if (!category) {
+      return NextResponse.json({ message: 'Kategori tidak ditemukan.' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, status: 200, data: categories }, { status: 200 });
+
+    return NextResponse.json({ success: true, data: category }, { status: 200 });
+
   } catch (error) {
-    return NextResponse.json({ success: false, status: 500, message: error.message }, { status: 500 });
+    console.error("Error in GET /api/categories/[id]:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
 
-
-// --- HANDLER UNTUK PUT REQUEST ---
-export async function PUT(request, { params }) { 
-    const { id: _id } = await params;
-    const data = await request.json();
-    try {
-        const session = await getServerSession(authOptions);
-
-        const validationResponse = validateAdmin(session);
-        if (!validationResponse.success) {
-            return NextResponse.json(validationResponse);
-        }
-        await connectToDatabase();
-        const category = await Category.findByIdAndUpdate(_id, data, { new: true });
-        if (!category) {
-            return NextResponse.json({ success: false, status: 404, message: 'Kategori tidak ditemukan.' }, { status: 404 });
-        }
-        return NextResponse.json({ success: true, status: 200, data: category }, { status: 200 });
-    } catch (error) {
-        return NextResponse.json({ success: false, status: 500, message: error.message }, { status: 500 });
+/**
+ * Memperbarui data satu kategori berdasarkan ID-nya.
+ * Hanya admin yang dapat melakukan aksi ini.
+ * @param {Request} request - Objek request masuk yang berisi body JSON.
+ * @param {{ params: { id: string } }} context - Konteks berisi parameter dinamis dari URL.
+ * @returns {Promise<NextResponse>} - Respons JSON berisi data kategori yang sudah diperbarui atau pesan error.
+ */
+export async function PUT(request, { params }) {
+  try {
+    // Validasi Sesi & Hak Akses Admin
+    const session = await getServerSession(authOptions);
+    const validationResponse = validateAdmin(session);
+    if (!validationResponse.success) {
+      return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
     }
+
+    const data = await request.json();
+    await connectToDatabase();
+
+    // Temukan dan perbarui kategori
+    // { new: true } memastikan metode ini mengembalikan dokumen yang sudah diperbarui.
+    const updatedCategory = await Category.findByIdAndUpdate(params.id, data, { new: true, runValidators: true });
+
+    if (!updatedCategory) {
+      return NextResponse.json({ message: 'Kategori tidak ditemukan.' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: updatedCategory }, { status: 200 });
+
+  } catch (error) {
+    console.error("Error in PUT /api/categories/[id]:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+  }
 }
 
-// --- HANDLER UNTUK DELETE REQUEST ---
-export async function DELETE(request,{ params }) {
-    const { id: _id } = await params;
-    try {
-        const session = await getServerSession(authOptions);
-
-        const validationResponse = validateAdmin(session);
-        if (!validationResponse.success) {
-            return NextResponse.json(validationResponse);
-        }
-        await connectToDatabase();
-        const category = await Category.findByIdAndDelete(_id);
-        if (!category) {
-            return NextResponse.json({ success: false, status: 404, message: 'Kategori tidak ditemukan.' }, { status: 404 });
-        }
-        return NextResponse.json({ success: true, status: 200, message: 'Kategori berhasil dihapus.' }, { status: 200 });
-    } catch (error) {
-        return NextResponse.json({ success: false, status: 500, message: error.message }, { status: 500 });
+/**
+ * Menghapus satu kategori berdasarkan ID-nya.
+ * Aksi ini dicegah jika kategori masih digunakan oleh produk lain.
+ * Hanya admin yang dapat melakukan aksi ini.
+ * @param {Request} request - Objek request masuk.
+ * @param {{ params: { id: string } }} context - Konteks berisi parameter dinamis dari URL.
+ * @returns {Promise<NextResponse>} - Respons JSON berisi pesan sukses atau error.
+ */
+export async function DELETE(request, { params }) {
+  try {
+    // Validasi Sesi & Hak Akses Admin
+    const session = await getServerSession(authOptions);
+    const validationResponse = validateAdmin(session);
+    if (!validationResponse.success) {
+      return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
     }
+
+    await connectToDatabase();
+
+    // --- Validasi Penting: Cek apakah kategori masih digunakan ---
+    const productCount = await Product.countDocuments({ category: params.id });
+    if (productCount > 0) {
+      // 409 Conflict: Permintaan tidak dapat diselesaikan karena konflik dengan state saat ini.
+      return NextResponse.json({
+        success: false,
+        message: `Kategori tidak dapat dihapus karena masih digunakan oleh ${productCount} produk.`,
+      }, { status: 409 });
+    }
+    // -----------------------------------------------------------
+
+    const deletedCategory = await Category.findByIdAndDelete(params.id);
+
+    if (!deletedCategory) {
+      return NextResponse.json({ message: 'Kategori tidak ditemukan.' }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, message: 'Kategori berhasil dihapus.' }, { status: 200 });
+
+  } catch (error) {
+    console.error("Error in DELETE /api/categories/[id]:", error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
 }
