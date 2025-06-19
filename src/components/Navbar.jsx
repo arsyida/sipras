@@ -1,6 +1,11 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
+import { signOut } from "next-auth/react"; // Import signOut dari next-auth/react
+import { redirect } from 'next/navigation'; // Import redirect untuk navigasi
+import Link from "next/link";
+
+// component MUI
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -18,7 +23,6 @@ import Button from "@mui/material/Button";
 import Image from "next/image";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import Link from 'next/link'; // Import Link dari next/link
 
 // Icon untuk expand/collapse di Drawer
 import ExpandLess from '@mui/icons-material/ExpandLess';
@@ -30,10 +34,10 @@ const drawerWidth = 240;
 
 function DrawerAppBar(props) {
   const { window } = props;
-  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   // --- STATE UNTUK MENU "INVENTARIS" (Desktop) ---
-  const [inventarisAnchorEl, setInventarisAnchorEl] = React.useState(null);
+  const [inventarisAnchorEl, setInventarisAnchorEl] = useState(null);
   const openInventaris = Boolean(inventarisAnchorEl);
 
   const handleInventarisClick = (event) => {
@@ -44,7 +48,7 @@ function DrawerAppBar(props) {
   };
 
   // --- STATE UNTUK MENU "MUTASI" (Desktop) ---
-  const [mutasiAnchorEl, setMutasiAnchorEl] = React.useState(null);
+  const [mutasiAnchorEl, setMutasiAnchorEl] = useState(null);
   const openMutasi = Boolean(mutasiAnchorEl);
 
   const handleMutasiClick = (event) => {
@@ -55,13 +59,13 @@ function DrawerAppBar(props) {
   };
 
   // --- STATE UNTUK MENU "INVENTARIS" (Mobile Drawer) ---
-  const [openInventarisDrawer, setOpenInventarisDrawer] = React.useState(false);
+  const [openInventarisDrawer, setOpenInventarisDrawer] = useState(false);
   const handleInventarisDrawerClick = () => {
     setOpenInventarisDrawer(!openInventarisDrawer);
   };
 
   // --- STATE UNTUK MENU "MUTASI" (Mobile Drawer) ---
-  const [openMutasiDrawer, setOpenMutasiDrawer] = React.useState(false);
+  const [openMutasiDrawer, setOpenMutasiDrawer] = useState(false);
   const handleMutasiDrawerClick = () => {
     setOpenMutasiDrawer(!openMutasiDrawer);
   };
@@ -273,6 +277,14 @@ function DrawerAppBar(props) {
             >
               Laporan
             </Button>
+            <Button
+              onClick={() => {
+                signOut();
+                redirect('/login');
+              }}
+            >
+              Logout
+            </Button>
           </Box>
         </Toolbar>
       </AppBar>
@@ -296,7 +308,7 @@ function DrawerAppBar(props) {
           {drawer}
         </Drawer>
       </nav>
-    </Box>
+    </Box >
   );
 }
 

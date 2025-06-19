@@ -4,8 +4,10 @@ export { default } from "next-auth/middleware";
 export const config = {
   matcher: [
     '/dashboard/:path*',
-    '/inventory/:path*',
-    '/mutations/:path*',
-    '/reports/:path*',
+    '/inventaris-tetap/:path*',
+    '/inventaris-tidak-tetap/:path*',
+    '/mutasi-barang-keluar/:path*',
+    '/mutasi-barang-masuk/:path*',
+    '/laporan/:path*',
   ],
 };

@@ -24,6 +24,7 @@ const ProductSchema = new Schema({
   },
   measurement_unit: {
     type: String,
+    enum: ['Pcs', 'Box', 'Rim', 'Kg', 'Lusin', 'Set', 'Susun'],
     required: [true, 'Satuan pengukuran tidak boleh kosong.'], // Contoh: Pcs, Box, Rim
     trim: true,
   },
