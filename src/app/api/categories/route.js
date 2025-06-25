@@ -1,87 +1,127 @@
 // Lokasi: /src/app/api/categories/route.js
 
+/**
+ * @file Mendefinisikan endpoint API untuk resource kategori (/api/categories).
+ * File ini berfungsi sebagai Controller yang menangani request HTTP,
+ * memvalidasi otentikasi & otorisasi, memanggil service yang sesuai,
+ * dan memformat respons HTTP.
+ */
+
 import { NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/db';
 import { getServerSession } from 'next-auth/next';
+
+// Opsi otentikasi dari NextAuth
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { validateAdmin } from '@/lib/api';
-import Category from '@/models/Category';
+
+// Impor fungsi dari lapisan Service dan Validasi
+import { validateAdmin } from '@/lib/api/validate-admin';
+import { getPaginatedCategories, getAllCategoriesForDropdown, createCategory } from '@/lib/api/services/categoryServices';
 
 /**
- * Mengambil daftar semua kategori.
- * Diurutkan berdasarkan nama secara ascending.
- * @param {Request} request - Objek request masuk (tidak digunakan).
- * @returns {Promise<NextResponse>} - Respons JSON berisi array data kategori atau pesan error.
+ * Menangani permintaan GET untuk mengambil data kategori.
+ * Endpoint ini memiliki dua mode:
+ * 1. Mengambil semua kategori (versi sederhana) untuk dropdown jika ada query param `?all=true`.
+ * 2. Mengambil kategori dengan paginasi secara default.
+ * * Membutuhkan otentikasi (user harus login).
+ * * @param {Request} request - Objek request masuk dari Next.js.
+ * @returns {Promise<NextResponse>} Promise yang resolve ke objek NextResponse.
  */
 export async function GET(request) {
   try {
-    // Validasi Sesi (semua pengguna yang login boleh melihat daftar kategori)
+    // -- OTENTIKASI ---
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const { searchParams } = new URL(request.url);
 
-    // Ambil semua kategori dan urutkan berdasarkan nama
-    const categories = await Category.find({}).sort({ name: 1 });
+    // --- ROUTING LOGIKA BISNIS BERDASARKAN QUERY PARAMS ---
+    const fetchAll = searchParams.get('all') === 'true';
 
-    // Tambahan: Memberikan respons yang jelas jika tidak ada kategori sama sekali.
-    if (!categories || categories.length === 0) {
-      return NextResponse.json({ success: true, data: [], message: "Tidak ada kategori ditemukan." }, { status: 200 });
+    if (fetchAll) {
+      // Panggil service untuk mendapatkan semua data untuk dropdown
+      const categories = await getAllCategoriesForDropdown();
+      return NextResponse.json({ success: true, data: categories }, { status: 200 });
     }
 
-    return NextResponse.json({ success: true, data: categories }, { status: 200 });
+    // --- Logika default untuk paginasi ---
+
+    // Ambil dan validasi parameter dari URL, berikan nilai default
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const sortBy = searchParams.get('sortBy') || 'name'; // Default sort by name
+    const order = searchParams.get('order') || 'asc'; // Default order ascending
+
+    // Panggil service untuk mendapatkan data dengan paginasi
+    const { data, totalItems } = await getPaginatedCategories({ page, limit, sortBy, order });
+
+    // --- SIAPKAN DAN KIRIM RESPONS SUKSES ---
+
+    // Logika presentasi (perhitungan total halaman) tetap di API layer
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return NextResponse.json({
+      success: true,
+      data,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+      }
+    }, { status: 200 });
 
   } catch (error) {
+    // --- TAHAP 4: PENANGANAN ERROR UMUM ---
     console.error("Error in GET /api/categories:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({
+      success: false,
+      message: "Terjadi kesalahan pada server."
+    }, { status: 500 });
   }
 }
 
 /**
- * Membuat kategori baru.
- * Hanya admin yang dapat melakukan aksi ini.
- * @param {Request} request - Objek request masuk yang berisi body JSON dengan data kategori.
- * @returns {Promise<NextResponse>} - Respons JSON berisi data kategori yang baru dibuat atau pesan error.
+ * Menangani permintaan POST untuk membuat kategori baru.
+ * Endpoint ini dilindungi dan hanya dapat diakses oleh user dengan peran 'admin'.
+ * * @param {Request} request - Objek request masuk dari Next.js. Body harus berisi data kategori dalam format JSON.
+ * @returns {Promise<NextResponse>} Promise yang resolve ke objek NextResponse.
  */
 export async function POST(request) {
   try {
-    // Validasi Sesi & Hak Akses Admin
+    // OTENTIKASI & OTORISASI ADMIN ---
     const session = await getServerSession(authOptions);
     const validationResponse = validateAdmin(session);
     if (!validationResponse.success) {
+      // Kembalikan respons error dari fungsi validasi (bisa 401 atau 403)
       return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
     }
 
     const data = await request.json();
 
-    // Validasi sederhana untuk memastikan nama diisi
-    if (!data.name || data.name.trim() === '') {
-        return NextResponse.json({ success: false, message: "Nama kategori tidak boleh kosong." }, { status: 400 });
-    }
+    // PANGGIL SERVICE (LOGIKA BISNIS) ---
+    const newCategory = await createCategory(data);
 
-    await connectToDatabase();
-
-    // Buat dokumen baru di database
-    const newCategory = await Category.create(data);
-
-    // Tambahan: Memastikan operasi create benar-benar berhasil sebelum mengirim respons.
-    if (!newCategory) {
-      return NextResponse.json({ success: false, message: "Gagal membuat kategori di database." }, { status: 500 });
-    }
-
+    // KIRIM RESPONS SUKSES ---
+    // Status 201 Created adalah praktik terbaik untuk respons POST yang berhasil membuat resource baru.
     return NextResponse.json({ success: true, data: newCategory }, { status: 201 });
 
   } catch (error) {
-    // Error code 11000 di MongoDB berarti ada duplikasi data unik (unique index violation)
-    if (error.code === 11000) {
-      return NextResponse.json({
-        success: false,
-        message: 'Gagal membuat kategori. Nama kategori sudah ada.',
-      }, { status: 409 }); // 409 Conflict
+    // PENANGANAN ERROR SPESIFIK DARI SERVICE ---
+    // Menerjemahkan error dari service layer menjadi respons HTTP yang sesuai.
+    
+    // Jika error karena validasi input (dari Zod di service)
+    if (error.isValidationError) {
+      return NextResponse.json({ success: false, message: error.message, errors: error.errors }, { status: 400 }); // 400 Bad Request
     }
-    console.error("Error in POST /api/categories:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+    
+    // Jika error karena data sudah ada (dari Mongoose di service)
+    if (error.isDuplicate) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 409 }); // 409 Conflict
+    }
+
+    // Untuk semua error lainnya yang tidak terduga
+    console.error("Unexpected error in POST /api/categories:", error);
+    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 }); // 500 Internal Server Error
   }
 }

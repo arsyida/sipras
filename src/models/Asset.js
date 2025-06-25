@@ -7,17 +7,11 @@ const AssetSchema = new Schema(
       ref: 'Product',
       required: true,
     },
-    asset_tag: {
+    serial_number: {
       type: String,
       unique: true,
       required: true,
       trim: true,
-    },
-    serial_number: {
-      type: String,
-      unique: true,
-      trim: true,
-      sparse: true,
     },
     location: {
       type: Schema.Types.ObjectId,
@@ -28,11 +22,6 @@ const AssetSchema = new Schema(
       type: String,
       enum: ['baik', 'rusak ringan', 'rusak berat', 'perbaikan'],
       default: 'baik',
-    },
-    status: {
-      type: String,
-      enum: ['tersedia', 'dipinjam', 'dihapus'],
-      default: 'tersedia',
     },
     purchase_date: {
       type: Date,

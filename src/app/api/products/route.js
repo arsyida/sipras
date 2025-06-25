@@ -1,52 +1,117 @@
-// Lokasi file: /src/app/api/categories/route.js
+/**
+ * @file Mendefinisikan endpoint API untuk resource produk (/api/products).
+ * Berfungsi sebagai Controller yang menangani request HTTP dan memanggil service layer.
+ */
 
-import { NextResponse } from 'next/server'; // Impor NextResponse
-import connectToDatabase from '@/lib/db';   // Pastikan path sudah benar
-import Product from '@/models/Product';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../auth/[...nextauth]/route'; // Pastikan path sudah benar
-import { validateAdmin } from '@/lib/api'; // Pastikan path sudah benar
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { validateAdmin } from '@/lib/api/validate-admin';
 
-// --- HANDLER UNTUK GET REQUEST ---
-export async function GET(request) { // Perubahan 1: Hanya menerima 'request'
+// Impor fungsi-fungsi dari service layer yang baru
+import {
+  createProduct,
+  getPaginatedProducts,
+  getAllProductsForDropdown
+} from '@/lib/api/services/productServices';
+
+/**
+ * Menangani permintaan GET untuk mengambil data produk.
+ * Endpoint ini memiliki dua mode:
+ * 1. Mengambil semua produk (versi sederhana) untuk dropdown jika ada query param `?all=true`.
+ * 2. Mengambil produk dengan paginasi secara default.
+ * * Membutuhkan otentikasi (user harus login).
+ * * @param {Request} request - Objek request masuk dari Next.js.
+ * @returns {Promise<NextResponse>} Promise yang resolve ke objek NextResponse.
+ */
+export async function GET(request) {
   try {
+    // -- OTENTIKASI ---
     const session = await getServerSession(authOptions);
-
-    const validationResponse = validateAdmin(session);
-    if (!validationResponse.success) {
-      return NextResponse.json(validationResponse);
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    await connectToDatabase();
+    const { searchParams } = new URL(request.url);
 
-    const products = await Product.find({}).sort({ name: 1 });
-    // Perubahan 3: Gunakan NextResponse untuk mengirim response
-    return NextResponse.json({ success: true, status: 200, data: products }, { status: 200 });
+    // --- ROUTING LOGIKA BISNIS BERDASARKAN QUERY PARAMS ---
+    const fetchAll = searchParams.get('all') === 'true';
+
+    if (fetchAll) {
+      // Panggil service untuk mendapatkan semua data untuk dropdown
+      const products = await getAllProductsForDropdown();
+      return NextResponse.json({ success: true, data: products }, { status: 200 });
+    }
+
+    // --- Logika default untuk paginasi ---
+
+    // Ambil dan validasi parameter dari URL, berikan nilai default
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const sortBy = searchParams.get('sortBy') || 'name'; // Default sort by name
+    const order = searchParams.get('order') || 'asc'; // Default order ascending
+
+    // Panggil service untuk mendapatkan data dengan paginasi
+    const { data, totalItems } = await getPaginatedProducts({ page, limit, sortBy, order });
+
+    // --- SIAPKAN DAN KIRIM RESPONS SUKSES ---
+
+    // Logika presentasi (perhitungan total halaman) tetap di API layer
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return NextResponse.json({
+      success: true,
+      data,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+      }
+    }, { status: 200 });
 
   } catch (error) {
-    return NextResponse.json({ success: false, status: 500, message: error.message }, { status: 500 });
+    // --- TAHAP 4: PENANGANAN ERROR UMUM ---
+    console.error("Error in GET /api/categories:", error);
+    return NextResponse.json({
+      success: false,
+      message: "Terjadi kesalahan pada server."
+    }, { status: 500 });
   }
 }
 
-// --- HANDLER UNTUK POST REQUEST ---
+/**
+ * Menangani permintaan POST untuk membuat produk baru.
+ * @param {Request} request - Objek request masuk dengan body JSON.
+ * @returns {Promise<NextResponse>} Respons JSON dengan data produk baru.
+ */
 export async function POST(request) {
   try {
+    // --- OTENTIKASI & OTORISASI ADMIN ---
     const session = await getServerSession(authOptions);
-
     const validationResponse = validateAdmin(session);
     if (!validationResponse.success) {
-      return NextResponse.json(validationResponse);
+      return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
     }
-    
-    // Perubahan 4: Ambil body dari request
-    const body = await request.json();
 
-    await connectToDatabase();
+    const data = await request.json();
 
-    const products = await Product.create(body);
-    return NextResponse.json({ success: true, status: 201, data: products }, { status: 201 });
+    // --- PANGGIL SERVICE (LOGIKA BISNIS) ---
+    const newProduct = await createProduct(data);
+
+    // --- KIRIM RESPONS SUKSES ---
+    return NextResponse.json({ success: true, data: newProduct }, { status: 201 });
 
   } catch (error) {
-    return NextResponse.json({ success: false, status: 400, message: error.message }, { status: 400 });
+    // --- PENANGANAN ERROR SPESIFIK DARI SERVICE ---
+    if (error.isValidationError) {
+      return NextResponse.json({ success: false, message: error.message, errors: error.errors }, { status: 400 });
+    }
+    if (error.isDuplicate) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 409 });
+    }
+
+    // Untuk semua error lainnya yang tidak terduga
+    console.error("Error in POST /api/products:", error);
+    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
   }
 }
