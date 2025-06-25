@@ -1,16 +1,6 @@
-import Image from "next/image";
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <div>
-      <h1>SIPRAS</h1>
-      <p>Platform digital terpusat untuk pengelolaan, pemantauan, dan pelaporan data sarana dan prasarana secara efisien, akurat, dan transparan</p>
-      <Image
-        src="/images/nextjs-logo.png" // Ganti dengan path gambar Anda
-        alt="Next.js Logo"
-        width={500}
-        height={300}
-      />
-      </div>
-  );
+  redirect('/dashboard') // Redirect ke halaman dashboard
+  return null; // Tidak ada yang dirender karena sudah di-redirect
 }
