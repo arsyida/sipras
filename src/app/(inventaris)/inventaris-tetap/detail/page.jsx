@@ -1,137 +1,107 @@
-// src/app/inventaris/tetap/page.jsx
 "use client";
 
-import * as React from 'react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-import { Typography, Box, IconButton, Tooltip, CircularProgress, Alert } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+// Import komponen modular
+import InventoryPageLayout from '@/components/common/InventoryPageLayout';
+import TableComponent from '@/components/common/TableComponent';
 
-import ReusableTable from '@/components/ReusableTable';
+// MUI Components
+import { Typography, Tooltip, IconButton, Button, Box } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { getAllAsset } from '@/lib/services/assetServices';
 
+// DATA DUMMY (Harus sama dengan di halaman utama agar filtering konsisten)
+const mockInventoryData = [
+    { id: 'BRG001', date: '2023-01-15', name: 'Meja Belajar', merk: 'Ikea', year: 2022, quantity: 1, status: 'Baik', gedung: 'A', lantai: '3', ruang: 'A301' },
+    { id: 'BRG002', date: '2023-01-15', name: 'Meja Belajar', merk: 'Ikea', year: 2022, quantity: 1, status: 'Baik', gedung: 'A', lantai: '3', ruang: 'A301' },
+    { id: 'BRG005', date: '2023-01-16', name: 'Meja Belajar', merk: 'Ikea', year: 2022, quantity: 1, status: 'Rusak', gedung: 'A', lantai: '3', ruang: 'A301' },
+    { id: 'BRG003', date: '2023-02-10', name: 'Kursi Siswa', merk: 'Informa', year: 2021, quantity: 20, status: 'Rusak', gedung: 'B', lantai: '1', ruang: 'B102' },
+    { id: 'BRG004', date: '2023-02-12', name: 'Papan Tulis', merk: 'Ikea', year: 2023, quantity: 1, status: 'Baik', gedung: 'A', lantai: '2', ruang: 'A205' },
+];
 
-export default function InventarisTetapPage({ filters = {} }) {
-  const theme = useTheme();
-  const router = useRouter();
+export default function InventarisTetapDetailPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [dataAssets, setDataAssets] = useState(null);
 
-  const [inventoryData, setInventoryData] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
+    useEffect(() => {
+        const fetchData = async () => {
+            const assets = await getAllAsset();
+            setDataAssets(assets.data);
+        };
+        fetchData();
+    }, []);
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    // Ambil detail dari URL dan filter data
+    const detailItems = React.useMemo(() => {
+        const name = searchParams.get('name');
+        const gedung = searchParams.get('gedung');
+        const lantai = searchParams.get('lantai');
+        const ruang = searchParams.get('ruang');
 
-        const response = await axios.get('/api/assets');
-        
-        // **PERBAIKAN 1: Format data untuk menyamakan `_id` menjadi `id`**
-        // Ini membuat data kompatibel dengan ReusableTable yang mengharapkan `id`
-        const formattedData = response.data.data.map(item => ({
-          ...item,
-          id: item._id 
-        }));
-        
-        setInventoryData(formattedData);
+        if (!name || !gedung || !lantai || !ruang) return [];
 
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Gagal memuat data. Silakan coba lagi nanti.");
-      } finally {
-        setLoading(false);
-      }
-    };
+        return mockInventoryData.filter(item => 
+            item.name === name &&
+            item.gedung === gedung &&
+            item.lantai === lantai &&
+            item.ruang === ruang
+        );
+    }, [searchParams]);
 
-    fetchData();
-  }, []);
+    const pageTitle = detailItems.length > 0 ? `${detailItems[0].name}` : 'Detail Inventaris';
+    const locationInfo = detailItems.length > 0 ? `Lokasi: ${detailItems[0].gedung} - ${detailItems[0].lantai} - ${detailItems[0].ruang}` : 'Lokasi tidak ditemukan';
 
-  const handleDelete = async (item) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus ${item.product.name}?`)) {
-      try {
-        await axios.delete(`/api/assets/${item.id}`); // Menggunakan item.id yang sudah kita format
-        setInventoryData(prevData => prevData.filter(dataItem => dataItem.id !== item.id));
-        console.log(`Item dengan ID: ${item.id} berhasil dihapus.`);
-      } catch (err) {
-        console.error("Error deleting item:", err);
-        alert("Gagal menghapus item.");
-      }
-    }
-  };
+    const handleEditItem = (item) => console.log("Mengedit item:", item.id);
+    const handleDeleteItem = (item) => console.log("Menghapus item:", item.id);
 
-  // **PERBAIKAN 2: Definisikan kolom untuk mengakses data nested dengan `renderCell`**
-  const columns = [
-    { id: 'no', label: 'No' },
-    {
-      id: 'productName', // ID unik untuk kolom
-      label: 'Nama Barang',
-      renderCell: (row) => row.product?.name || 'N/A' // Akses: row -> product -> name
-    },
-    {
-      id: 'building',
-      label: 'Gedung',
-      renderCell: (row) => row.location?.building || 'N/A' // Akses: row -> location -> building
-    },
-    {
-      id: 'floor',
-      label: 'Lantai',
-      renderCell: (row) => row.location?.floor || 'N/A' // Akses: row -> location -> floor
-    },
-    {
-      id: 'room',
-      label: 'Ruang',
-      renderCell: (row) => row.location?.name || 'N/A' // Akses: row -> location -> name
-    },
-    {
-      id: 'condition', // **PERBAIKAN 3:** ID ini sekarang 'condition' untuk mencocokkan data
-      label: 'Status'
-    },
-  ];
-  
-  const filteredData = React.useMemo(() => {
-    if (!filters || Object.keys(filters).length === 0) {
-      return inventoryData;
-    }
-    return inventoryData.filter(item => {
-      // Implementasikan logika filter kompleks Anda di sini
-      return true; 
-    });
-  }, [inventoryData, filters]);
+    const columns = [
+        { id: 'id', label: 'Id Barang' },
+        { id: 'date', label: 'Tanggal Masuk' },
+        { id: 'year', label: 'Tahun' },
+        { 
+          id: 'status', 
+          label: 'Status',
+          renderCell: (row) => (
+            <Typography variant="body2" sx={{ color: row.status === 'Baik' ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
+              {row.status}
+            </Typography>
+          )
+        },
+    ];
 
-  if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress />
-        <Typography sx={{ ml: 2 }}>Memuat data...</Typography>
-      </Box>
+        <InventoryPageLayout
+            title={pageTitle}
+            customActions={
+                <Button variant="outlined" onClick={() => router.back()}>
+                    Kembali
+                </Button>
+            }
+        >
+            <Typography variant="h6" gutterBottom>{locationInfo}</Typography>
+            <TableComponent
+                columns={columns}
+                data={detailItems}
+                renderActionCell={(row) => (
+                    <Box>
+                        <Tooltip title="Edit Item">
+                            <IconButton onClick={() => handleEditItem(row)}>
+                                <EditIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Hapus Item">
+                            <IconButton onClick={() => handleDeleteItem(row)}>
+                                <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+                )}
+            />
+        </InventoryPageLayout>
     );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-  }
-
-  return (
-    <Box>
-      <ReusableTable
-        columns={columns}
-        data={filteredData}
-        ariaLabel={`Tabel Inventaris Tetap`}
-        showActionsColumn={true}
-        renderActionCell={(row) => (
-          <Tooltip title="Hapus Barang Ini">
-            <IconButton onClick={() => handleDelete(row)}>
-              <DeleteIcon sx={{ color: theme.palette.error.main }} />
-            </IconButton>
-          </Tooltip>
-        )}
-      />
-    </Box>
-  );
 }

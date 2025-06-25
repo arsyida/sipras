@@ -1,6 +1,6 @@
 import React from "react";
-import DrawerAppBar from "@/components/Navbar";
-import Providers from '@/components/providers/provider';
+import Providers from "@/components/providers/provider";
+import Navbar from "@/components/common/AppBar";
 
 export const metadata = {
   title: "Sipras",
@@ -15,10 +15,9 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <Providers>
-          <DrawerAppBar />
-          {children}
+          <Navbar>{children}</Navbar>
         </Providers>
       </body>
     </html>
   );
-};
+}

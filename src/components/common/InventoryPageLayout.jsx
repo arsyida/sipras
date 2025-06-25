@@ -3,15 +3,16 @@
 import * as React from 'react';
 import { Box, Typography, Button, Divider } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import BreadcrumbsComponent from '@/components/common/BreadcrumbsComponent';
 
 export default function InventoryPageLayout({ title, onAdd, onGenerateReport, children }) {
   const theme = useTheme();
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 3 }, mt: { xs: 7, sm: 8 }, display: 'flex', flexDirection: 'column', gap: 3 }}>
-      {/* Bagian Atas: Judul dan Tombol Aksi */}
+    <Box display="flex" flexDirection="column" gap={2} sx={{p:2}}>
+      <BreadcrumbsComponent />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
+        <Typography variant="h1" component="h1" sx={{ fontWeight: 'bold' }}>
           {title}
         </Typography>
         <Box>
@@ -39,10 +40,7 @@ export default function InventoryPageLayout({ title, onAdd, onGenerateReport, ch
           </Button>
         </Box>
       </Box>
-      
       <Divider flexItem sx={{ bgcolor: theme.palette.secondary.main }} />
-
-      {/* Konten (Filter dan Tabel) akan dirender di sini */}
       {children}
     </Box>
   );

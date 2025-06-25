@@ -8,7 +8,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
-export default function InventoryFilterBar({ filters, onFilterChange }) {
+export default function FilterBarComponent({ filters, onFilterChange }) {
   // Merk dan Status options bisa di-pass sebagai props jika berbeda antar halaman
   const merkOptions = ['Ikea', 'Informasi'];
   const statusOptions = ['Baik', 'Rusak'];

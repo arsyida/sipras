@@ -12,8 +12,7 @@ import mongoose from 'mongoose';
 
 /**
  * Membuat beberapa aset baru sekaligus untuk satu lokasi tertentu.
- * Menerima payload berupa objek { locationId, items: [...] }.
- * Hanya admin yang dapat melakukan aksi ini.
+ * Endpoint ini bisa menangani aset satuan ('Pcs') dan lainnya dalam satu permintaan.
  * @param {Request} request - Objek request masuk yang berisi body JSON.
  * @returns {Promise<NextResponse>} - Respons JSON berisi pesan sukses atau error.
  */
@@ -24,7 +23,7 @@ export async function POST(request) {
   if (!validationResponse.success) {
     return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
   }
-  
+
   const dbSession = await mongoose.startSession();
   try {
     const body = await request.json();
@@ -38,32 +37,24 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // 3. Validasi setiap objek di dalam array `items`
-    for (const item of items) {
-        if (!item.productId || !item.quantity || item.quantity <= 0) {
-            return NextResponse.json({
-                success: false,
-                message: 'Setiap item dalam array harus memiliki "productId" dan "quantity" yang valid.',
-            }, { status: 400 });
-        }
-    }
-
     await connectToDatabase();
     
-    let assetsToCreate = [];
-    
-    // 4. Memulai Transaksi Database untuk memastikan konsistensi data
+    const createdAssets = [];
+
+    // 3. Memulai Transaksi Database
     await dbSession.withTransaction(async () => {
-      // Loop melalui setiap item yang dikirim dari frontend untuk menyiapkan dokumen
+      // Loop melalui setiap item yang dikirim dari frontend
       for (const item of items) {
+        if (!item.productId || !item.quantity || item.quantity <= 0) continue; // Lewati jika data item tidak lengkap
+
         const product = await Product.findById(item.productId).lean();
         if (!product) {
-          // Jika satu produk saja tidak ditemukan, gagalkan seluruh transaksi
           throw new Error(`Produk dengan ID ${item.productId} tidak ditemukan.`);
         }
 
-        // Buat dokumen sebanyak `item.quantity`
+        // Untuk setiap item, buat dokumen sebanyak quantity
         for (let i = 0; i < item.quantity; i++) {
+          // Generate serial number yang unik untuk setiap unit
           const serial_number = await generateLocationBasedSerialNumber(item.productId, locationId);
           
           const newAssetData = {
@@ -72,15 +63,16 @@ export async function POST(request) {
             serial_number: serial_number,
             condition: item.condition || 'baik',
             purchase_date: item.purchase_date,
-            estimated_price: item.price
+            estimated_price: item.price,
+            // Anda bisa tambahkan asset_tag terpisah di sini jika mau
           };
-          assetsToCreate.push(newAssetData);
+          createdAssets.push(newAssetData);
         }
       }
 
-      if (assetsToCreate.length > 0) {
-        // Masukkan semua dokumen yang sudah disiapkan ke database dalam satu operasi
-        await Asset.insertMany(assetsToCreate, { session: dbSession });
+      if (createdAssets.length > 0) {
+        // Masukkan semua dokumen yang sudah disiapkan ke database
+        await Asset.insertMany(createdAssets, { session: dbSession });
       }
     });
 
@@ -88,22 +80,11 @@ export async function POST(request) {
     
     return NextResponse.json({
       success: true,
-      message: `${assetsToCreate.length} aset berhasil dibuat.`,
-      data: assetsToCreate
+      message: `${createdAssets.length} aset berhasil dibuat.`,
     }, { status: 201 });
 
   } catch (error) {
     await dbSession.endSession();
-    
-    // 5. Penanganan error khusus untuk bulk operations
-    if (error.name === 'MongoBulkWriteError' && error.code === 11000) {
-      return NextResponse.json({
-        success: false,
-        message: `Gagal membuat beberapa aset karena ada data duplikat (kemungkinan pada serial_number). ${error.writeErrors.length} aset gagal dimasukkan.`,
-        details: error.writeErrors,
-      }, { status: 409 }); // 409 Conflict
-    }
-
     console.error("Error in POST /api/assets/bulk-by-room:", error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

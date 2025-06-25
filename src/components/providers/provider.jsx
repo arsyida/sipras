@@ -2,22 +2,22 @@
 "use client"; // <--- PENTING: TANDAI INI SEBAGAI CLIENT COMPONENT
 
 import * as React from 'react';
+import { SessionProvider } from "next-auth/react";
+import theme from '@/theme';
+
+// MUI
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import theme from '@/theme'; // Pastikan path ke theme.js Anda benar
-import { SessionProvider } from "next-auth/react";
 
-// Import untuk Date Pickers (AdapterDayjs adalah fungsi/kelas)
+// MUI X
 import { LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'; // <--- AdapterDayjs DIIMPOR DI SINI
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 export default function Providers({ children }) {
   return (
     <SessionProvider>
       <ThemeProvider theme={theme}>
-        {/* CssBaseline mereset CSS browser */}
         <CssBaseline />
-        {/* LocalizationProvider dan AdapterDayjs sepenuhnya berada di Client Component */}
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           {children}
         </LocalizationProvider>

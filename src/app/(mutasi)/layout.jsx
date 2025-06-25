@@ -5,9 +5,9 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Box, Divider } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 
-import MyBreadcrumbs from '@/components/MyBreadcrumbs';
-import HeaderSection from '@/components/HeaderSection';
-import FilterSection from '@/components/FilterSection';
+import MyBreadcrumbs from '@/components/common/BreadcrumbsComponent';
+import HeaderSection from '@/components/common/HeaderSection';
+import FilterSection from '@/components/common/FilterSection';
 
 // Layout ini akan membungkus SEMUA halaman di bawah /mutasi/*
 // (Contoh: /mutasi/barang-keluar, /mutasi/barang-keluar/detail)
