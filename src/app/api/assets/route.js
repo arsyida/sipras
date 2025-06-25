@@ -1,20 +1,18 @@
-// Lokasi: /src/app/api/assets/route.js
+/**
+ * @file Mendefinisikan endpoint API untuk resource aset (/api/assets).
+ */
 
 import { NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/database/db';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { validateAdmin } from '@/lib/api/validate-admin';
-import { generateAssetTag } from '@/lib/api/assets/generateAssetTag'; // Impor fungsi helper
-import Asset from '@/models/Asset';
-import Product from '@/models/Product';
-import Category from '@/models/Category';
-import Location from '@/models/Location';
+
+import { getPaginatedAssets, registerNewAsset } from '@/lib/api/services/assetServices';
 
 /**
- * Mengambil daftar semua aset dengan filter, sorting, dan pagination.
- * @param {Request} request - Objek request masuk yang bisa berisi URL search params.
- * @returns {Promise<NextResponse>} - Respons JSON berisi array data aset dan metadata pagination.
+ * Menangani GET untuk mengambil daftar aset dengan filter dan paginasi.
+ * @param {Request} request - Objek request masuk.
+ * @returns {Promise<NextResponse>} Respons JSON dengan daftar aset dan metadata paginasi.
  */
 export async function GET(request) {
   try {
@@ -24,38 +22,19 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 20;
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
 
-    // Bangun objek filter dari searchParams
+    // Membangun objek filter secara dinamis dari query params
     const filters = {};
-    if (searchParams.get('location')) filters.location = searchParams.get('location');
-    if (searchParams.get('product')) filters.product = searchParams.get('product');
-    if (searchParams.get('condition')) filters.condition = searchParams.get('condition');
-    if (searchParams.get('status')) filters.status = searchParams.get('status');
-
-    await connectToDatabase();
-
-    const skip = (page - 1) * limit;
-
-    const [assets, totalAssets] = await Promise.all([
-      Asset.find(filters)
-        .populate({
-          path: 'product',
-          model: Product,
-          populate: { path: 'category', model: Category, select: 'name' }
-        })
-        .populate({
-          path: 'location',
-          model: Location,
-          select: 'name building'
-        })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Asset.countDocuments(filters)
-    ]);
+    for (const [key, value] of searchParams.entries()) {
+      if (['location', 'product', 'condition', 'status'].includes(key) && value) {
+        filters[key] = value;
+      }
+    }
+    
+    // Panggil service untuk mendapatkan data
+    const { assets, totalAssets } = await getPaginatedAssets({ page, limit, filters });
 
     const totalPages = Math.ceil(totalAssets / limit);
 
@@ -67,54 +46,37 @@ export async function GET(request) {
 
   } catch (error) {
     console.error("Error in GET /api/assets:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
   }
 }
 
 /**
- * Mendaftarkan satu aset baru secara individual.
- * Asset Tag akan dibuat secara otomatis.
- * @param {Request} request - Objek request masuk yang berisi body JSON dengan data aset.
- * @returns {Promise<NextResponse>} - Respons JSON berisi data aset yang baru dibuat.
+ * Menangani POST untuk mendaftarkan satu aset baru.
+ * @param {Request} request - Objek request masuk dengan body JSON.
+ * @returns {Promise<NextResponse>} Respons JSON dengan data aset yang baru dibuat.
  */
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
-    // Memerlukan hak akses admin untuk mendaftarkan aset baru
     const validationResponse = validateAdmin(session);
     if (!validationResponse.success) {
       return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
     }
 
     const data = await request.json();
-    const { product: productId, ...otherData } = data;
-
-    if (!productId) {
-      return NextResponse.json({ success: false, message: "Produk wajib dipilih." }, { status: 400 });
-    }
-
-    await connectToDatabase();
-
-    // Buat asset_tag unik secara otomatis menggunakan helper function
-    const serial_number = await generateAssetTag(productId);
-
-    const newAsset = await Asset.create({
-      ...otherData,
-      product: productId,
-      serial_number: serial_number,
-    });
+    const newAsset = await registerNewAsset(data);
 
     return NextResponse.json({ success: true, data: newAsset }, { status: 201 });
 
   } catch (error) {
-    if (error.code === 11000) {
-      const duplicatedField = Object.keys(error.keyValue)[0];
-      return NextResponse.json({
-        success: false,
-        message: `Gagal membuat aset. ${duplicatedField} '${error.keyValue[duplicatedField]}' sudah ada.`,
-      }, { status: 409 });
+    if (error.isValidationError) {
+      return NextResponse.json({ success: false, message: error.message, errors: error.errors }, { status: 400 });
     }
+    if (error.isDuplicate) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 409 });
+    }
+    
     console.error("Error in POST /api/assets:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
   }
 }

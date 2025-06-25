@@ -10,14 +10,29 @@ import Brand from '@/models/Brand';
 import Asset from '@/models/Asset'; // Diperlukan untuk validasi penghapusan
 import { getUnbrandedBrandId } from '@/lib/api/services/brandServices';
 
-// Skema Zod untuk validasi data produk.
+// Skema untuk mendaftarkan PRODUK BARU (sesuai permintaan Anda)
 const productSchema = z.object({
-  product_code: z.string({ required_error: "Kode produk wajib diisi." }).trim().min(1, 'Kode produk tidak boleh kosong.'),
-  name: z.string({ required_error: "Nama produk wajib diisi." }).trim().min(1, 'Nama produk tidak boleh kosong.'),
-    brand: z.string().optional(),
-  category: z.string({ required_error: "Kategori wajib diisi." }),
-  measurement_unit: z.enum(['Pcs', 'Meter', 'Susun', 'Set'], { required_error: "Satuan ukur wajib diisi." }),
+  product_code: z.string({ required_error: "Kode produk wajib diisi." })
+    .trim()
+    .min(1, { message: 'Kode produk tidak boleh kosong.' }),
+  name: z.string({ required_error: "Nama produk wajib diisi." })
+    .trim()
+    .min(1, { message: 'Nama produk tidak boleh kosong.' }),
+  brand: z.string({ required_error: "Brand wajib diisi." })
+    .refine((val) => mongoose.Types.ObjectId.isValid(val), {
+      message: "ID Brand tidak valid.",
+  }),
+  category: z.string({ required_error: "Kategori wajib diisi." })
+    .refine((val) => mongoose.Types.ObjectId.isValid(val), {
+      message: "ID Kategori tidak valid.",
+  }),
+  measurement_unit: z.enum(['Pcs', 'Meter', 'Susun', 'Set'], {
+    required_error: "Satuan pengukuran wajib diisi.",
+    invalid_type_error: "Satuan pengukuran tidak valid."
+  }),
 });
+// -----------------------------------------
+
 // Skema Zod untuk array produk, digunakan dalam operasi bulk
 const bulkProductSchema = z.array(productSchema);
 

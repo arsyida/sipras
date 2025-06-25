@@ -1,49 +1,121 @@
-// src/app/inventaris/tetap/page.jsx (atau halaman daftar utama Anda)
+// src/app/inventaris/tetap/page.jsx
 "use client";
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
+
+import { Typography, Box, IconButton, Tooltip, CircularProgress, Alert } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 import ReusableTable from '@/components/ReusableTable';
 import { useTheme } from '@mui/material/styles';
-import { Typography, Box, IconButton, Tooltip } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-// Asumsikan ini data Anda untuk inventaris tetap
-const fixedInventoryData = [
-  { no: '1', gedung: 'Gedung A', lantai: 'Lt.3', ruang: 'A3', name: 'Meja Laboratorium', merk: 'LabPro', year: 2023, jumlah: '5', satuan: 'Unit', status: 'Baik', id: 'FA-LAB-001' },
-  { no: '2', gedung: 'Gedung A', lantai: 'Lt.3', ruang: 'A3', name: 'Kursi Laboratorium', merk: 'LabPro', year: 2023, jumlah: '10', satuan: 'Unit', status: 'Baik', id: 'FA-LAB-004' },
-  { no: '3', gedung: 'Gedung A', lantai: 'Lt.2', ruang: 'A2', name: 'Proyektor', merk: 'Epson', year: 2024, jumlah: 2, satuan: 'Unit', status: 'Rusak', id: 'FA-LAB-003' },
-];
+
 
 export default function InventarisTetapPage({ filters = {} }) {
   const theme = useTheme();
   const router = useRouter();
 
-  /**
-   * Fungsi ini membuat URL dengan query string berdasarkan lokasi item,
-   * lalu mengarahkan pengguna ke halaman detail lokasi.
-   * @param {object} item - Data baris yang diklik.
-   */
-  const handleDelete = (item) => {
-    // Di sini Anda bisa menambahkan logika untuk menghapus item
-    console.log(`Menghapus item dengan ID: ${item.id}`);
-    // Contoh: panggil API untuk menghapus data
+  const [inventoryData, setInventoryData] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await axios.get('/api/assets');
+        
+        // **PERBAIKAN 1: Format data untuk menyamakan `_id` menjadi `id`**
+        // Ini membuat data kompatibel dengan ReusableTable yang mengharapkan `id`
+        const formattedData = response.data.data.map(item => ({
+          ...item,
+          id: item._id 
+        }));
+        
+        setInventoryData(formattedData);
+
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Gagal memuat data. Silakan coba lagi nanti.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleDelete = async (item) => {
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${item.product.name}?`)) {
+      try {
+        await axios.delete(`/api/assets/${item.id}`); // Menggunakan item.id yang sudah kita format
+        setInventoryData(prevData => prevData.filter(dataItem => dataItem.id !== item.id));
+        console.log(`Item dengan ID: ${item.id} berhasil dihapus.`);
+      } catch (err) {
+        console.error("Error deleting item:", err);
+        alert("Gagal menghapus item.");
+      }
+    }
   };
 
-  // Definisi kolom (bisa disesuaikan)
+  // **PERBAIKAN 2: Definisikan kolom untuk mengakses data nested dengan `renderCell`**
   const columns = [
     { id: 'no', label: 'No' },
-    { id: 'name', label: 'Nama Barang' },
-    { id: 'gedung', label: 'Gedung' },
-    { id: 'lantai', label: 'Lantai' },
-    { id: 'ruang', label: 'Ruang' },
-    { id: 'status', label: 'Status' },
+    {
+      id: 'productName', // ID unik untuk kolom
+      label: 'Nama Barang',
+      renderCell: (row) => row.product?.name || 'N/A' // Akses: row -> product -> name
+    },
+    {
+      id: 'building',
+      label: 'Gedung',
+      renderCell: (row) => row.location?.building || 'N/A' // Akses: row -> location -> building
+    },
+    {
+      id: 'floor',
+      label: 'Lantai',
+      renderCell: (row) => row.location?.floor || 'N/A' // Akses: row -> location -> floor
+    },
+    {
+      id: 'room',
+      label: 'Ruang',
+      renderCell: (row) => row.location?.name || 'N/A' // Akses: row -> location -> name
+    },
+    {
+      id: 'condition', // **PERBAIKAN 3:** ID ini sekarang 'condition' untuk mencocokkan data
+      label: 'Status'
+    },
   ];
-
-  // Logika filter Anda untuk halaman ini tetap sama...
+  
   const filteredData = React.useMemo(() => {
-    // ...logika filter Anda berdasarkan props 'filters'
-    return fixedInventoryData;
-  }, [filters]);
+    if (!filters || Object.keys(filters).length === 0) {
+      return inventoryData;
+    }
+    return inventoryData.filter(item => {
+      // Implementasikan logika filter kompleks Anda di sini
+      return true; 
+    });
+  }, [inventoryData, filters]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Memuat data...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -54,7 +126,7 @@ export default function InventarisTetapPage({ filters = {} }) {
         showActionsColumn={true}
         renderActionCell={(row) => (
           <Tooltip title="Hapus Barang Ini">
-            <IconButton color="primary" onClick={() => handleDelete(row)}>
+            <IconButton onClick={() => handleDelete(row)}>
               <DeleteIcon sx={{ color: theme.palette.error.main }} />
             </IconButton>
           </Tooltip>

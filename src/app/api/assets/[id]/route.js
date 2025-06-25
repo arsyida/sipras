@@ -1,129 +1,99 @@
-// Lokasi: /src/app/api/assets/[id]/route.js
+/**
+ * @file Mendefinisikan endpoint API untuk operasi pada satu aset spesifik (/api/assets/[id]).
+ */
 
 import { NextResponse } from 'next/server';
-import connectToDatabase from '@/lib/database/db';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { validateAdmin } from '@/lib/api/validate-admin';
-import Asset from '@/models/Asset';
-import Product from '@/models/Product';
-import Category from '@/models/Category';
-import Location from '@/models/Location';
+
+import {
+  getAssetById,
+  updateAssetById,
+  deleteAssetById
+} from '@/lib/api/services/assetServices';
 
 /**
- * Mengambil detail satu aset berdasarkan ID-nya.
- * Mengisi (populate) data dari Product, Category, dan Location.
- * @param {Request} request - Objek request masuk (tidak digunakan).
- * @param {{ params: { id: string } }} context - Konteks berisi parameter dinamis dari URL.
- * @returns {Promise<NextResponse>} - Respons JSON berisi data aset atau pesan error.
+ * Menangani GET untuk mengambil detail satu aset berdasarkan ID.
+ * @param {Request} request
+ * @param {{ params: { id: string } }} context
+ * @returns {Promise<NextResponse>}
  */
 export async function GET(request, { params }) {
   try {
-    // Validasi Sesi (semua pengguna yang login boleh melihat detail aset)
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    await connectToDatabase();
-
-    // Gunakan findById dan populate semua data yang diperlukan untuk tampilan detail
-    const asset = await Asset.findById(params.id)
-      .populate({
-        path: 'product',
-        model: Product,
-        populate: {
-          path: 'category',
-          model: Category,
-          select: 'name'
-        }
-      })
-      .populate({
-        path: 'location',
-        model: Location
-      });
-
-    if (!asset) {
-      return NextResponse.json({ message: 'Aset tidak ditemukan.' }, { status: 404 });
-    }
-
+    const asset = await getAssetById(params.id);
     return NextResponse.json({ success: true, data: asset }, { status: 200 });
 
   } catch (error) {
+    if (error.isNotFound) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 404 });
+    }
     console.error("Error in GET /api/assets/[id]:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
   }
 }
 
 /**
- * Memperbarui data satu aset berdasarkan ID-nya.
- * Berguna untuk mutasi (pindah lokasi) atau mengubah kondisi.
- * @param {Request} request - Objek request masuk yang berisi body JSON.
- * @param {{ params: { id: string } }} context - Konteks berisi parameter dinamis dari URL.
- * @returns {Promise<NextResponse>} - Respons JSON berisi data aset yang sudah diperbarui atau pesan error.
+ * Menangani PUT untuk memperbarui data satu aset (misal: pindah lokasi, ubah kondisi).
+ * @param {Request} request
+ * @param {{ params: { id: string } }} context
+ * @returns {Promise<NextResponse>}
  */
 export async function PUT(request, { params }) {
   try {
-    // Aksi ini bisa dilakukan oleh staf (misal: memindahkan aset), jadi tidak perlu validasi admin.
+    // Aksi ini bisa dilakukan oleh staf biasa, jadi hanya perlu validasi sesi login.
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const data = await request.json();
-    await connectToDatabase();
-
-    // Temukan dan perbarui aset
-    const updatedAsset = await Asset.findByIdAndUpdate(params.id, data, { new: true, runValidators: true });
-
-    if (!updatedAsset) {
-      return NextResponse.json({ message: 'Aset tidak ditemukan.' }, { status: 404 });
-    }
-
+    const updatedAsset = await updateAssetById(params.id, data);
     return NextResponse.json({ success: true, data: updatedAsset }, { status: 200 });
 
   } catch (error) {
-    // Penanganan jika ada duplikasi pada field unik seperti serial_number
-    if (error.code === 11000) {
-        const duplicatedField = Object.keys(error.keyValue)[0];
-        return NextResponse.json({
-            success: false,
-            message: `Gagal memperbarui. ${duplicatedField} '${error.keyValue[duplicatedField]}' sudah ada.`,
-        }, { status: 409 });
+    if (error.isNotFound) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 404 });
+    }
+    if (error.isValidationError) {
+      return NextResponse.json({ success: false, message: error.message, errors: error.errors }, { status: 400 });
+    }
+    if (error.isDuplicate) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 409 });
     }
     console.error("Error in PUT /api/assets/[id]:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
   }
 }
 
 /**
- * Menghapus satu aset (penghapusan permanen) berdasarkan ID-nya.
- * Hanya admin yang dapat melakukan aksi ini.
- * @param {Request} request - Objek request masuk.
- * @param {{ params: { id: string } }} context - Konteks berisi parameter dinamis dari URL.
- * @returns {Promise<NextResponse>} - Respons JSON berisi pesan sukses atau error.
+ * Menangani DELETE untuk menghapus satu aset secara permanen.
+ * @param {Request} request
+ * @param {{ params: { id: string } }} context
+ * @returns {Promise<NextResponse>}
  */
 export async function DELETE(request, { params }) {
   try {
-    // Validasi Sesi & Hak Akses Admin
+    // Menghapus aset adalah aksi krusial, memerlukan hak akses admin.
     const session = await getServerSession(authOptions);
     const validationResponse = validateAdmin(session);
     if (!validationResponse.success) {
       return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
     }
 
-    await connectToDatabase();
-
-    const deletedAsset = await Asset.findByIdAndDelete(params.id);
-
-    if (!deletedAsset) {
-      return NextResponse.json({ message: 'Aset tidak ditemukan.' }, { status: 404 });
-    }
-
+    await deleteAssetById(params.id);
     return NextResponse.json({ success: true, message: 'Aset berhasil dihapus.' }, { status: 200 });
 
   } catch (error) {
+    if (error.isNotFound) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 404 });
+    }
     console.error("Error in DELETE /api/assets/[id]:", error);
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
   }
 }
