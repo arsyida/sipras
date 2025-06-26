@@ -17,7 +17,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 
 // Service untuk mengambil data
-import { getAllLocation } from '@/lib/services/locationServices';
+import { getAllLocations } from '@/lib/services/locationServices';
 
 
 /**
@@ -43,7 +43,7 @@ export default function InventarisLokasiPage() {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await getAllLocation();
+                const response = await getAllLocations();
                 
                 // Asumsi API mengembalikan objek { success: true, data: [...] }
                 setLocations(response.data || []); 

@@ -20,11 +20,11 @@ const AssetSchema = new Schema(
     },
     condition: {
       type: String,
-      enum: ['baik', 'rusak ringan', 'rusak berat', 'perbaikan'],
-      default: 'baik',
+      enum: ['Baik', 'Rusak', 'Kurang Baik'],
+      default: 'Baik',
     },
     purchase_date: {
-      type: Date,
+      type: String,
     },
     estimated_price: {
       type: Number,

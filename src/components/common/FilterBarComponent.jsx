@@ -16,7 +16,7 @@ export default function FilterBarComponent({ filters, onFilterChange }) {
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
       <TextField
-        label="Cari Id Barang"
+        label="Cari Nama Barang"
         variant="outlined"
         size="medium"
         sx={{ flexGrow: 1, minWidth: '200px' }}

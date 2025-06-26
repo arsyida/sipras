@@ -2,33 +2,37 @@
  * @file Layanan terpusat untuk mengelola semua logika bisnis terkait Produk.
  */
 
-import { z } from 'zod';
-import connectToDatabase from '@/lib/database/db';
-import Product from '@/models/Product';
-import Category from '@/models/Category';
-import Brand from '@/models/Brand';
-import Asset from '@/models/Asset'; // Diperlukan untuk validasi penghapusan
-import { getUnbrandedBrandId } from '@/lib/api/services/brandServices';
+import { z } from "zod";
+import connectToDatabase from "@/lib/database/db";
+import Product from "@/models/Product";
+import Category from "@/models/Category";
+import Brand from "@/models/Brand";
+import Asset from "@/models/Asset"; // Diperlukan untuk validasi penghapusan
+import { getUnbrandedBrandId } from "@/lib/api/services/brandServices";
 
 // Skema untuk mendaftarkan PRODUK BARU (sesuai permintaan Anda)
 const productSchema = z.object({
-  product_code: z.string({ required_error: "Kode produk wajib diisi." })
+  product_code: z
+    .string({ required_error: "Kode produk wajib diisi." })
     .trim()
-    .min(1, { message: 'Kode produk tidak boleh kosong.' }),
-  name: z.string({ required_error: "Nama produk wajib diisi." })
+    .min(1, { message: "Kode produk tidak boleh kosong." }),
+  name: z
+    .string({ required_error: "Nama produk wajib diisi." })
     .trim()
-    .min(1, { message: 'Nama produk tidak boleh kosong.' }),
-  brand: z.string({ required_error: "Brand wajib diisi." })
+    .min(1, { message: "Nama produk tidak boleh kosong." }),
+  brand: z
+    .string({ required_error: "Brand wajib diisi." })
     .refine((val) => mongoose.Types.ObjectId.isValid(val), {
       message: "ID Brand tidak valid.",
-  }),
-  category: z.string({ required_error: "Kategori wajib diisi." })
+    }),
+  category: z
+    .string({ required_error: "Kategori wajib diisi." })
     .refine((val) => mongoose.Types.ObjectId.isValid(val), {
       message: "ID Kategori tidak valid.",
-  }),
-  measurement_unit: z.enum(['Pcs', 'Meter', 'Susun', 'Set'], {
+    }),
+  measurement_unit: z.enum(["Pcs", "Meter", "Susun", "Set"], {
     required_error: "Satuan pengukuran wajib diisi.",
-    invalid_type_error: "Satuan pengukuran tidak valid."
+    invalid_type_error: "Satuan pengukuran tidak valid.",
   }),
 });
 // -----------------------------------------
@@ -49,25 +53,30 @@ const bulkProductSchema = z.array(productSchema);
  * @param {'asc' | 'desc'} options.order - Urutan sorting.
  * @returns {Promise<{data: Array<object>, totalItems: number}>} Objek berisi data dan jumlah total item.
  */
-export async function getPaginatedProducts({ page = 1, limit = 20, sortBy = 'name', order = 'asc' }) {
-    await connectToDatabase();
+export async function getPaginatedProducts({
+  page = 1,
+  limit = 20,
+  sortBy = "name",
+  order = "asc",
+}) {
+  await connectToDatabase();
 
-    const skip = (page - 1) * limit;
-    const sortOptions = { [sortBy]: order === 'desc' ? -1 : 1 };
+  const skip = (page - 1) * limit;
+  const sortOptions = { [sortBy]: order === "desc" ? -1 : 1 };
 
-    // Menjalankan query untuk mengambil data dan menghitung total item secara paralel untuk efisiensi.
-    const [data, totalItems] = await Promise.all([
-        Product.find({})
-            .populate({ path: 'category', select: 'name' })
-            .populate({ path: 'brand', select: 'name' })
-            .sort(sortOptions)
-            .skip(skip)
-            .limit(limit)
-            .lean(),
-        Product.countDocuments({})
-    ]);
+  // Menjalankan query untuk mengambil data dan menghitung total item secara paralel untuk efisiensi.
+  const [data, totalItems] = await Promise.all([
+    Product.find({})
+      .populate({ path: "category", select: "name" })
+      .populate({ path: "brand", select: "name" })
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Product.countDocuments({}),
+  ]);
 
-    return { data, totalItems };
+  return { data, totalItems };
 }
 
 /**
@@ -78,7 +87,8 @@ export async function getPaginatedProducts({ page = 1, limit = 20, sortBy = 'nam
 export async function getAllProductsForDropdown() {
   await connectToDatabase();
   const products = await Product.find({})
-    .select('_id name brand') // Ambil field yang relevan untuk dropdown
+    .populate({ path: "brand", select: "name" }) // Populate nama brand
+    .select("_id name brand") // Ambil field yang relevan untuk dropdown
     .sort({ name: 1 })
     .lean();
   return products;
@@ -99,7 +109,9 @@ export async function createProduct(data) {
   // Validasi input menggunakan Zod
   const validation = productSchema.safeParse(data);
   if (!validation.success) {
-    const validationError = new Error('Input tidak valid. Silakan periksa kembali data Anda.');
+    const validationError = new Error(
+      "Input tidak valid. Silakan periksa kembali data Anda."
+    );
     validationError.isValidationError = true;
     validationError.errors = validation.error.flatten().fieldErrors;
     throw validationError;
@@ -112,9 +124,10 @@ export async function createProduct(data) {
   } catch (error) {
     if (error.code === 11000) {
       const duplicatedField = Object.keys(error.keyValue)[0];
-      const errorMessage = duplicatedField === 'name' 
-        ? `Produk dengan nama "${validation.data.name}" dan brand yang sama sudah ada.`
-        : `Produk dengan ${duplicatedField} "${error.keyValue[duplicatedField]}" sudah ada.`;
+      const errorMessage =
+        duplicatedField === "name"
+          ? `Produk dengan nama "${validation.data.name}" dan brand yang sama sudah ada.`
+          : `Produk dengan ${duplicatedField} "${error.keyValue[duplicatedField]}" sudah ada.`;
       const duplicateError = new Error(errorMessage);
       duplicateError.isDuplicate = true;
       throw duplicateError;
@@ -136,12 +149,12 @@ export async function createProduct(data) {
 export async function getProductById(id) {
   await connectToDatabase();
   const product = await Product.findById(id)
-    .populate({ path: 'category', model: Category, select: 'name' })
-    .populate({ path: 'brand', model: Brand, select: 'name' })
+    .populate({ path: "category", model: Category, select: "name" })
+    .populate({ path: "brand", model: Brand, select: "name" })
     .lean();
 
   if (!product) {
-    const notFoundError = new Error('Produk tidak ditemukan.');
+    const notFoundError = new Error("Produk tidak ditemukan.");
     notFoundError.isNotFound = true;
     throw notFoundError;
   }
@@ -158,7 +171,7 @@ export async function getProductById(id) {
 export async function updateProductById(id, data) {
   const validation = productSchema.partial().safeParse(data);
   if (!validation.success) {
-    const validationError = new Error('Input tidak valid.');
+    const validationError = new Error("Input tidak valid.");
     validationError.isValidationError = true;
     validationError.errors = validation.error.flatten().fieldErrors;
     throw validationError;
@@ -166,13 +179,19 @@ export async function updateProductById(id, data) {
 
   await connectToDatabase();
   try {
-    const updatedProduct = await Product.findByIdAndUpdate(id, validation.data, {
-      new: true,
-      runValidators: true
-    }).lean();
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      validation.data,
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).lean();
 
     if (!updatedProduct) {
-      const notFoundError = new Error('Produk tidak ditemukan untuk diperbarui.');
+      const notFoundError = new Error(
+        "Produk tidak ditemukan untuk diperbarui."
+      );
       notFoundError.isNotFound = true;
       throw notFoundError;
     }
@@ -201,7 +220,9 @@ export async function deleteProductById(id) {
   // Validasi bisnis: Pastikan produk tidak sedang digunakan oleh aset manapun.
   const assetCount = await Asset.countDocuments({ product: id });
   if (assetCount > 0) {
-    const conflictError = new Error(`Produk tidak dapat dihapus karena masih terhubung dengan ${assetCount} aset.`);
+    const conflictError = new Error(
+      `Produk tidak dapat dihapus karena masih terhubung dengan ${assetCount} aset.`
+    );
     conflictError.isConflict = true;
     throw conflictError;
   }
@@ -209,7 +230,7 @@ export async function deleteProductById(id) {
   const deletedProduct = await Product.findByIdAndDelete(id);
 
   if (!deletedProduct) {
-    const notFoundError = new Error('Produk tidak ditemukan untuk dihapus.');
+    const notFoundError = new Error("Produk tidak ditemukan untuk dihapus.");
     notFoundError.isNotFound = true;
     throw notFoundError;
   }
@@ -228,7 +249,9 @@ export async function deleteProductById(id) {
 export async function createBulkProducts(productsData) {
   // 1. Validasi bahwa input adalah array yang tidak kosong
   if (!Array.isArray(productsData) || productsData.length === 0) {
-    const validationError = new Error('Payload harus berupa array berisi data produk dan tidak boleh kosong.');
+    const validationError = new Error(
+      "Payload harus berupa array berisi data produk dan tidak boleh kosong."
+    );
     validationError.isValidationError = true;
     throw validationError;
   }
@@ -237,7 +260,7 @@ export async function createBulkProducts(productsData) {
   const unbrandedId = await getUnbrandedBrandId();
 
   // Proses data untuk mengisi brand default jika kosong
-  const processedData = productsData.map(product => {
+  const processedData = productsData.map((product) => {
     if (!product.brand) {
       return { ...product, brand: unbrandedId };
     }
@@ -247,7 +270,9 @@ export async function createBulkProducts(productsData) {
   // 2. Validasi setiap item di dalam array yang sudah diproses menggunakan skema Zod
   const validation = bulkProductSchema.safeParse(processedData);
   if (!validation.success) {
-    const validationError = new Error('Satu atau lebih data produk di dalam array tidak valid.');
+    const validationError = new Error(
+      "Satu atau lebih data produk di dalam array tidak valid."
+    );
     validationError.isValidationError = true;
     validationError.errors = validation.error.format(); // Menyertakan detail error dari Zod
     throw validationError;
@@ -257,25 +282,31 @@ export async function createBulkProducts(productsData) {
 
   try {
     // 3. Gunakan insertMany dengan data yang sudah diproses
-    const createdProducts = await Product.insertMany(validation.data, { ordered: false });
+    const createdProducts = await Product.insertMany(validation.data, {
+      ordered: false,
+    });
     return {
       count: createdProducts.length,
-      createdProducts
+      createdProducts,
     };
   } catch (error) {
     // 4. Tangani error spesifik untuk operasi bulk dari MongoDB
-    if (error.name === 'MongoBulkWriteError' && error.code === 11000) {
-      const bulkWriteError = new Error(`Gagal membuat beberapa produk karena ada data duplikat.`);
+    if (error.name === "MongoBulkWriteError" && error.code === 11000) {
+      const bulkWriteError = new Error(
+        `Gagal membuat beberapa produk karena ada data duplikat.`
+      );
       bulkWriteError.isBulkWriteError = true;
       // Memberikan detail error untuk debugging di frontend jika diperlukan
       bulkWriteError.details = {
         insertedCount: error.result.nInserted,
         failedCount: error.writeErrors.length,
-        errors: error.writeErrors.map(err => ({
+        errors: error.writeErrors.map((err) => ({
           index: err.index,
           code: err.code,
-          message: `Item di index ${err.index} gagal: Duplikasi pada field ${Object.keys(err.keyValue)}.`
-        }))
+          message: `Item di index ${
+            err.index
+          } gagal: Duplikasi pada field ${Object.keys(err.keyValue)}.`,
+        })),
       };
       throw bulkWriteError;
     }

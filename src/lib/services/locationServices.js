@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export async function getAllLocation() {
+export async function getAllLocations() {
     try {
         const response = await axios.get('/api/locations');
         return response.data;

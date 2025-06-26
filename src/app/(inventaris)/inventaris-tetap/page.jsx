@@ -93,10 +93,15 @@ export default function InventarisTetapPage() {
 
     // --- COLUMN DEFINITION untuk tabel Agregat Lokasi ---
     const columns = [
-        { id: 'gedung', label: 'Gedung' },
-        { id: 'lantai', label: 'Lantai' },
-        { id: 'ruang', label: 'Ruang' },
-        { id: 'totalQuantity', label: 'Total Jumlah Barang' },
+        { id: "no", label: "No", renderCell: (row, index) => index + 1 },
+        { id: 'lokasi', label: 'Lokasi' },
+        { id: 'namaBarang', label: 'Nama Barang' },
+        { id: 'merk', label: 'Merk' },
+        { id: 'tahun', label: 'Tahun' },
+        { id: 'jumlah', label: 'Jumlah' },
+        { id: 'status', label: 'Status' },
+        { id: 'harga', label: 'Harga' },
+        { id: 'aksi', label: 'Aksi', },
     ];
     
     // Opsi untuk filter dropdown (dibuat dinamis dari data)
@@ -107,7 +112,7 @@ export default function InventarisTetapPage() {
 
     return (
         <InventoryPageLayout
-            title="Inventaris Tetap (Agregat per Lokasi)"
+            title="Inventaris Tetap"
             onAdd={handleAddItem}
             onGenerateReport={handleGenerateReport}
         >

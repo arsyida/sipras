@@ -10,3 +10,13 @@ export async function getAllAsset() {
     console.log("Data aset berhasil diambil:", response.data);
     return response.data;
 }
+
+export async function createAsset(assetData) {
+    try {
+        const response = await axios.post('/api/assets/bulk', assetData);
+        return response.data;
+    } catch (error) {
+        console.error("Gagal membuat aset:", error);
+        throw error;
+    }
+}

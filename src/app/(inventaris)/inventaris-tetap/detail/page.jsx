@@ -30,10 +30,21 @@ export default function InventarisTetapDetailPage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const assets = await getAllAsset();
-            setDataAssets(assets.data);
-        };
-        fetchData();
+                    try {
+                        setLoading(true);
+                        setError(null);
+                        const response = await getAllAsset();
+                        
+                        setDataAssets(response.data || []);
+
+                    } catch (err) {
+                        console.error("Gagal memuat data aset:", err);
+                        setError("Gagal memuat data aset. Silakan coba lagi nanti.");
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                fetchData();
     }, []);
 
     // Ambil detail dari URL dan filter data
@@ -45,16 +56,16 @@ export default function InventarisTetapDetailPage() {
 
         if (!name || !gedung || !lantai || !ruang) return [];
 
-        return mockInventoryData.filter(item => 
-            item.name === name &&
-            item.gedung === gedung &&
-            item.lantai === lantai &&
-            item.ruang === ruang
+        return dataAssets.filter(item => 
+            item.product.name === name &&
+            item.location.building === gedung &&
+            item.location.floor === lantai &&
+            item.location.name === ruang
         );
     }, [searchParams]);
 
     const pageTitle = detailItems.length > 0 ? `${detailItems[0].name}` : 'Detail Inventaris';
-    const locationInfo = detailItems.length > 0 ? `Lokasi: ${detailItems[0].gedung} - ${detailItems[0].lantai} - ${detailItems[0].ruang}` : 'Lokasi tidak ditemukan';
+    const locationInfo = detailItems.length > 0 ? `Lokasi: ${detailItems[0].location.building} - ${detailItems[0].location.floor} - ${detailItems[0].location.name}` : 'Lokasi tidak ditemukan';
 
     const handleEditItem = (item) => console.log("Mengedit item:", item.id);
     const handleDeleteItem = (item) => console.log("Menghapus item:", item.id);

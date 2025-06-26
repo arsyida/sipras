@@ -19,12 +19,22 @@ const assetRegistrationSchema = z.object({
   location: z.string().refine((val) => Types.ObjectId.isValid(val), {
     message: "ID Lokasi tidak valid.",
   }),
-  condition: z.enum(['baik', 'rusak ringan', 'rusak berat', 'perbaikan']).optional(),
+  condition: z.enum(['Baik', 'Rusak', 'Kurang Baik']).default('Baik'),
   purchase_date: z.string().optional(),
   estimated_price: z.number().optional(),
   attributes: z.record(z.any()).optional(),
 });
 // -----------------------------------------
+
+// Skema validasi Zod untuk data yang masuk dari form
+const assetBulkSchema = z.object({
+  product: z.string().min(1, "Produk harus dipilih."),
+  location: z.string().min(1, "Lokasi harus dipilih."),
+  purchase_date: z.string().optional(),
+  quantity: z.number().int().min(1, "Jumlah harus minimal 1."),
+  estimated_price: z.number().min(0, "Harga harus angka positif."),
+  condition: z.enum(['Baik', 'Rusak', 'Kurang Baik']).default('Baik'),
+});
 
 // Skema Zod untuk validasi saat memperbarui aset. Semua field bersifat opsional.
 const assetUpdateSchema = assetRegistrationSchema.partial();
@@ -201,4 +211,78 @@ export async function deleteAssetById(id) {
         notFoundError.isNotFound = true;
         throw notFoundError;
     }
+}
+
+/**
+ * Mendaftarkan beberapa aset sekaligus berdasarkan quantity, dengan mengadopsi
+ * logika dari generateSerialNumber untuk membuat nomor seri unik secara massal.
+ * @param {object} data - Data dari form.
+ * @returns {Promise<Array>} Array dari dokumen aset yang baru dibuat.
+ */
+export async function registerBulkAssets(data) {
+  // 1. Validasi input menggunakan Zod
+  const validation = assetBulkSchema.safeParse(data);
+  if (!validation.success) {
+    const validationError = new Error('Input tidak valid. Silakan periksa kembali data Anda.');
+    validationError.isValidationError = true;
+    validationError.errors = validation.error.flatten().fieldErrors;
+    throw validationError;  
+  }
+  
+  const { quantity, product: productId, location: locationId, ...commonData } = validation.data;
+  
+  await connectToDatabase();
+
+  // 2. Mengambil informasi awal untuk pembuatan nomor seri (hanya 1x query)
+  const [product, location, assetCountInLocation] = await Promise.all([
+    Product.findById(productId).select('product_code').lean(),
+    Location.findById(locationId).select('building floor name').lean(),
+    Asset.countDocuments({ 
+      product: new mongoose.Types.ObjectId(productId), 
+      location: new mongoose.Types.ObjectId(locationId) 
+    })
+  ]);
+
+  // Validasi data
+  if (!product || !product.product_code) throw new Error(`Produk dengan ID ${productId} tidak valid.`);
+  if (!location) throw new Error(`Lokasi dengan ID ${locationId} tidak valid.`);
+
+  // 3. Siapkan prefiks nomor seri
+  const roomNameMatch = location.name.match(/^\d+/);
+  const roomNumber = roomNameMatch ? roomNameMatch[0] : 'N/A';
+  const prefix = `G${location.building}/L${location.floor}/R${roomNumber}/${product.product_code}`;
+
+  // 4. Siapkan array untuk menampung semua aset yang akan dibuat
+  const assetsToCreate = [];
+  
+  // 5. Lakukan perulangan sebanyak 'quantity' untuk membuat data aset
+  for (let i = 0; i < quantity; i++) {
+    const nextSequence = assetCountInLocation + i + 1;
+    const paddedSequence = String(nextSequence).padStart(3, '0');
+    const newSerialNumber = `${prefix}${paddedSequence}`;
+
+    const newAssetData = {
+      ...commonData,
+      product: productId,
+      location: locationId,
+      serial_number: newSerialNumber,
+      condition: commonData.condition, // Sesuaikan dengan enum skema
+    };
+    assetsToCreate.push(newAssetData);
+  }
+
+  // 6. Gunakan `insertMany` untuk menyimpan semua aset dalam satu operasi efisien
+  try {
+    const createdAssets = await Asset.insertMany(assetsToCreate, { ordered: true });
+    return createdAssets;
+  } catch (error) {
+    // Penanganan error duplikasi jika terjadi
+    if (error.code === 11000) {
+      const duplicateError = new Error(`Gagal membuat aset. Nomor Seri yang digenerate sudah ada.`);
+      duplicateError.isDuplicate = true;
+      throw duplicateError;
+    }
+    // Melemparkan error lainnya
+    throw error;
+  }
 }
