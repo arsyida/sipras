@@ -13,7 +13,7 @@ import {
   getCategoryById,
   updateCategoryById,
   deleteCategoryById
-} from '@/services/categoryService';
+} from '@/lib/api/services/categoryServices';
 
 /**
  * Menangani permintaan GET untuk mengambil detail satu kategori berdasarkan ID.

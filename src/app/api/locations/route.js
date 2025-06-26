@@ -1,6 +1,5 @@
 /**
  * @file Mendefinisikan endpoint API untuk resource lokasi (/api/locations).
- * Berfungsi sebagai Controller yang menangani request HTTP dan memanggil service layer.
  */
 
 import { NextResponse } from 'next/server';
@@ -8,14 +7,16 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { validateAdmin } from '@/lib/api/validate-admin';
 
-// Impor fungsi-fungsi dari service layer yang baru dibuat
-import { getAllLocations, createLocation } from '@/lib/api/services/locationServices';
+// Impor fungsi-fungsi dari service layer yang baru
+import { 
+    getAllLocations, 
+    createLocation,
+    getPaginatedLocations // Impor fungsi baru
+} from '@/lib/api/services/locationServices';
 
 /**
- * Menangani permintaan GET untuk mengambil daftar semua lokasi.
- * Membutuhkan otentikasi (semua pengguna yang login boleh melihat).
- * @param {Request} request - Objek request masuk.
- * @returns {Promise<NextResponse>} Respons JSON dengan daftar lokasi atau pesan error.
+ * Menangani permintaan GET untuk mengambil data lokasi.
+ * Mendukung mode 'semua data' dan 'paginasi'.
  */
 export async function GET(request) {
   try {
@@ -24,9 +25,32 @@ export async function GET(request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const locations = await getAllLocations();
+    const { searchParams } = new URL(request.url);
+    const fetchAll = searchParams.get('all') === 'true';
 
-    return NextResponse.json({ success: true, data: locations }, { status: 200 });
+    if (fetchAll) {
+      const locations = await getAllLocations();
+      return NextResponse.json({ success: true, data: locations }, { status: 200 });
+    }
+
+    // --- Logika default untuk paginasi ---
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    
+    // Panggil service untuk mendapatkan data dengan paginasi
+    const { data, totalItems } = await getPaginatedLocations({ page, limit });
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return NextResponse.json({
+      success: true,
+      data,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+      }
+    }, { status: 200 });
 
   } catch (error) {
     console.error("Error in GET /api/locations:", error);
@@ -36,9 +60,6 @@ export async function GET(request) {
 
 /**
  * Menangani permintaan POST untuk membuat lokasi baru.
- * Membutuhkan otorisasi sebagai admin.
- * @param {Request} request - Objek request masuk dengan body JSON.
- * @returns {Promise<NextResponse>} Respons JSON dengan data lokasi baru atau pesan error.
  */
 export async function POST(request) {
   try {
@@ -51,11 +72,9 @@ export async function POST(request) {
     const data = await request.json();
     const newLocation = await createLocation(data);
     
-    // Status 201 Created untuk menandakan resource baru berhasil dibuat.
     return NextResponse.json({ success: true, data: newLocation }, { status: 201 });
 
   } catch (error) {
-    // Memetakan error spesifik dari service ke respons HTTP yang sesuai
     if (error.isValidationError) {
       return NextResponse.json({ success: false, message: error.message, errors: error.errors }, { status: 400 });
     }
@@ -63,7 +82,6 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: error.message }, { status: 409 });
     }
     
-    // Fallback untuk error tak terduga
     console.error("Error in POST /api/locations:", error);
     return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
   }

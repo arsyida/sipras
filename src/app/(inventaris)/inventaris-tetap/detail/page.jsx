@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 // Import komponen modular
-import InventoryPageLayout from '@/components/common/InventoryPageLayout';
 import TableComponent from '@/components/common/TableComponent';
 
 // MUI Components
@@ -13,6 +12,7 @@ import { useTheme } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { getAllAsset } from '@/lib/services/assetServices';
+import PageLayout from '@/components/common/PageLayout';
 
 // DATA DUMMY (Harus sama dengan di halaman utama agar filtering konsisten)
 const mockInventoryData = [
@@ -86,7 +86,7 @@ export default function InventarisTetapDetailPage() {
     ];
 
     return (
-        <InventoryPageLayout
+        <PageLayout
             title={pageTitle}
             customActions={
                 <Button variant="outlined" onClick={() => router.back()}>
@@ -113,6 +113,6 @@ export default function InventarisTetapDetailPage() {
                     </Box>
                 )}
             />
-        </InventoryPageLayout>
+        </PageLayout>
     );
 }

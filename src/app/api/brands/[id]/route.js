@@ -88,7 +88,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
     }
 
-    const { deletedBrandName } = await deleteBrandById(id);
+    const deletedBrandName = await deleteBrandById(id);
     return NextResponse.json({ success: true, message: `Brand "${deletedBrandName}" berhasil dihapus.` }, { status: 200 });
 
   } catch (error) {

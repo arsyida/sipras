@@ -1,3 +1,5 @@
+// Lokasi: /lib/api/services/brandServices.js
+
 /**
  * @file Layanan terpusat untuk mengelola semua logika bisnis terkait Brand.
  */
@@ -5,7 +7,7 @@
 import { z } from 'zod';
 import connectToDatabase from '@/lib/database/db';
 import Brand from '@/models/Brand';
-import Product from '@/models/Product'; // Diperlukan untuk validasi penghapusan
+import Product from '@/models/Product';
 
 // Skema Zod untuk validasi data brand yang masuk.
 const brandSchema = z.object({
@@ -14,28 +16,56 @@ const brandSchema = z.object({
 });
 
 
+// ===================================================================================
+//  OPERASI PADA KOLEKSI (Banyak Brand)
+// ===================================================================================
+
 /**
- * Mengambil daftar semua brand dari database, diurutkan berdasarkan nama.
- * @returns {Promise<Array<object>>} Sebuah promise yang resolve ke array berisi semua data brand.
+ * BARU: Mengambil daftar brand dengan paginasi dan sorting.
+ * @param {object} options - Opsi untuk query.
+ * @returns {Promise<{data: Array<object>, totalItems: number}>} Objek berisi data dan jumlah total item.
  */
-export async function getAllBrands() {
+export async function getPaginatedBrands({ page = 1, limit = 10, filters = {} }) {
+    await connectToDatabase();
+    const skip = (page - 1) * limit;
+    
+    // Membuat query filter dinamis
+    const query = {};
+    if (filters.name) {
+        query.name = { $regex: filters.name, $options: 'i' }; // 'i' untuk case-insensitive
+    }
+
+    const [data, totalItems] = await Promise.all([
+        Brand.find(query).sort({ name: 1 }).skip(skip).limit(limit).lean(),
+        Brand.countDocuments(query)
+    ]);
+    
+    // Menambahkan hitungan produk untuk setiap brand secara efisien
+    const brandsWithCount = await Promise.all(data.map(async (brand) => {
+        const assetCount = await Product.countDocuments({ brand: brand._id });
+        return { ...brand, assetCount };
+    }));
+
+    return { data: brandsWithCount, totalItems };
+}
+
+
+/**
+ * Mengambil daftar semua brand dari database untuk dropdown.
+ * @returns {Promise<Array<object>>} Array berisi semua data brand.
+ */
+export async function getAllBrandsForDropdown() {
   await connectToDatabase();
-
-  const brands = await Brand.find({})
-    .sort({ name: 1 })
-    .lean(); // Menggunakan .lean() untuk performa query baca yang lebih baik
-
+  const brands = await Brand.find({}).sort({ name: 1 }).lean();
   return brands;
 }
 
 /**
  * Membuat brand baru setelah validasi.
- * @param {object} data - Data untuk brand baru (name, description).
+ * @param {object} data - Data untuk brand baru.
  * @returns {Promise<object>} Dokumen brand yang baru dibuat.
- * @throws {Error} Melemparkan error dengan flag 'isValidationError' atau 'isDuplicate'.
  */
 export async function createBrand(data) {
-  // 1. Validasi input menggunakan Zod
   const validation = brandSchema.safeParse(data);
   if (!validation.success) {
     const validationError = new Error('Input tidak valid. Nama brand wajib diisi.');
@@ -45,32 +75,27 @@ export async function createBrand(data) {
   }
 
   await connectToDatabase();
-
   try {
-    // 2. Buat dokumen menggunakan data yang sudah divalidasi
     const newBrand = await Brand.create(validation.data);
     return newBrand;
   } catch (error) {
-    // 3. Tangani error duplikasi data dari database
     if (error.code === 11000) {
       const duplicateError = new Error(`Brand dengan nama "${validation.data.name}" sudah ada.`);
       duplicateError.isDuplicate = true;
       throw duplicateError;
     }
-    // Lempar error lain untuk ditangani sebagai 500
     throw error;
   }
 }
 
 // ===================================================================================
-//  OPERASI PADA DOKUMEN TUNGGAL (Berdasarkan ID) - BARU DITAMBAHKAN
+//  OPERASI PADA DOKUMEN TUNGGAL (Berdasarkan ID)
 // ===================================================================================
 
 /**
  * Mengambil satu brand berdasarkan ID.
  * @param {string} id - ID dari brand.
  * @returns {Promise<object>} Dokumen brand yang ditemukan.
- * @throws {Error} Melemparkan error dengan flag 'isNotFound' jika tidak ditemukan.
  */
 export async function getBrandById(id) {
     await connectToDatabase();
@@ -89,7 +114,6 @@ export async function getBrandById(id) {
  * @param {string} id - ID dari brand yang akan diperbarui.
  * @param {object} data - Data baru untuk brand.
  * @returns {Promise<object>} Dokumen brand yang sudah diperbarui.
- * @throws {Error} Melemparkan error 'isNotFound', 'isValidationError', atau 'isDuplicate'.
  */
 export async function updateBrandById(id, data) {
     const validation = brandSchema.partial().safeParse(data);
@@ -126,8 +150,6 @@ export async function updateBrandById(id, data) {
 /**
  * Menghapus satu brand berdasarkan ID.
  * @param {string} id - ID brand yang akan dihapus.
- * @returns {Promise<{deletedBrandName: string}>} Mengembalikan objek berisi nama brand yang dihapus.
- * @throws {Error} Melemparkan error 'isConflict' jika brand masih digunakan atau 'isNotFound'.
  */
 export async function deleteBrandById(id) {
     await connectToDatabase();
@@ -146,22 +168,4 @@ export async function deleteBrandById(id) {
         notFoundError.isNotFound = true;
         throw notFoundError;
     }
-    
-    return { deletedBrandName: deletedBrand.name };
-}
-
-export async function getUnbrandedBrandId() {
-  await connectToDatabase();
-  const UNBRANDED_NAME = "Tanpa Merk";
-  
-  // Cari brand default, hanya ambil field _id untuk efisiensi
-  let unbrandedBrand = await Brand.findOne({ name: UNBRANDED_NAME }).select('_id').lean();
-
-  // Jika tidak ditemukan, buat brand default baru
-  if (!unbrandedBrand) {
-    console.log('Creating default "Tidak Bermerek" brand...');
-    unbrandedBrand = await Brand.create({ name: UNBRANDED_NAME, description: 'Brand default untuk produk tanpa merek.' });
-  }
-
-  return unbrandedBrand._id.toString();
 }

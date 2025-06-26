@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import React, { useState, useEffect, useMemo } from 'react';
 
 // Komponen generik
-import InventoryPageLayout from '@/components/common/InventoryPageLayout';
 import FilterBarComponent from '@/components/common/FilterBarComponent';
 import TableComponent from '@/components/common/TableComponent'; 
 
@@ -17,6 +16,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { getAllProducts } from '@/lib/services/productServices';
 import { getAllBrands } from '@/lib/services/brandServices';
 import { getAllCategories } from '@/lib/services/categoryServices';
+import PageLayout from '@/components/common/PageLayout';
 
 /**
  * Halaman untuk menampilkan dan mengelola daftar Produk (Master).
@@ -102,7 +102,7 @@ export default function ProductPage() {
     if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
 
     return (
-        <InventoryPageLayout title="Manajemen Produk" onAdd={handleAddItem}>
+        <PageLayout title="Manajemen Produk" onAdd={handleAddItem}>
             <FilterBarComponent
                 filters={filters}
                 onFilterChange={handleFilterChange}
@@ -124,6 +124,6 @@ export default function ProductPage() {
                     </Box>
                 )}
             />
-        </InventoryPageLayout>
+        </PageLayout>
     );
 }

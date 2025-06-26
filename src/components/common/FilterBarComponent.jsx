@@ -2,72 +2,96 @@
 
 import * as React from 'react';
 import {
-  Box, TextField, FormControl, InputLabel, Select, MenuItem, InputAdornment
+  Box,
+  Grid,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  InputAdornment,
+  Typography,
+  Divider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
-export default function FilterBarComponent({ filters, onFilterChange }) {
-  // Merk dan Status options bisa di-pass sebagai props jika berbeda antar halaman
-  const merkOptions = ['Ikea', 'Informasi'];
-  const statusOptions = ['Baik', 'Rusak'];
+/**
+ * Komponen Filter Bar dinamis yang merender input berdasarkan konfigurasi.
+ * @param {object} filters - State yang menyimpan nilai dari setiap filter.
+ * @param {function} onFilterChange - Handler untuk memperbarui state. Dipanggil dengan (name, value).
+ * @param {array} filterConfig - Konfigurasi untuk setiap field di filter bar.
+ */
+export default function FilterBarComponent({
+  filters,
+  onFilterChange,
+  filterConfig = [] // Berikan nilai default array kosong
+}) {
+
+  const handleInputChange = (event) => {
+    onFilterChange(event.target.name, event.target.value);
+  };
+
+  const renderFilterField = (field) => {
+    const { name, label, type, options = [] } = field;
+    const value = filters[name] || '';
+
+    switch (type) {
+      case 'select':
+        return (
+          <FormControl fullWidth size="medium" sx={{ minWidth: 120 }} variant="outlined">
+            <InputLabel>{label}</InputLabel>
+            <Select
+              name={name}
+              value={value}
+              label={label}
+              onChange={handleInputChange}
+            >
+              <MenuItem value=""><em>Semua</em></MenuItem>
+              {options.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        );
+      
+      case 'text':
+      default:
+        return (
+          <TextField
+            fullWidth
+            name={name}
+            label={label}
+            variant="outlined"
+            size="medium"
+            value={value}
+            onChange={handleInputChange}
+            InputProps={name.toLowerCase().includes('search') ? {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            } : null}
+          />
+        );
+    }
+  };
 
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-      <TextField
-        label="Cari Nama Barang"
-        variant="outlined"
-        size="medium"
-        sx={{ flexGrow: 1, minWidth: '200px' }}
-        value={filters.search || ''}
-        onChange={(e) => onFilterChange('search', e.target.value)}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon />
-            </InputAdornment>
-          ),
-        }}
-      />
-
-      <DatePicker 
-        sx={{ minWidth: '120px' }}
-        value={filters.date || null}
-        onChange={(newValue) => onFilterChange('date', newValue)}
-      />
-
-      {/* Dropdown Merk */}
-      <FormControl sx={{ minWidth: 120 }} size="medium">
-        <InputLabel>Merk</InputLabel>
-        <Select
-          value={filters.merk || ''}
-          label="Merk"
-          onChange={(e) => onFilterChange('merk', e.target.value)}
-          IconComponent={ArrowDropDownIcon}
-        >
-          <MenuItem value=""><em>Semua</em></MenuItem>
-          {merkOptions.map(option => (
-            <MenuItem key={option} value={option}>{option}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      {/* Dropdown Status */}
-      <FormControl sx={{ minWidth: 120 }} size="medium">
-        <InputLabel>Status</InputLabel>
-        <Select
-          value={filters.status || ''}
-          label="Status"
-          onChange={(e) => onFilterChange('status', e.target.value)}
-          IconComponent={ArrowDropDownIcon}
-        >
-          <MenuItem value=""><em>Semua</em></MenuItem>
-          {statusOptions.map(option => (
-            <MenuItem key={option} value={option}>{option}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+    <Box>
+      <Typography variant="h6" gutterBottom>
+        Filter
+      </Typography>
+      <Grid container spacing={2} alignItems="center">
+        {filterConfig.map((field) => (
+          <Grid item xs={12} sm={6} md={3} key={field.name}>
+            {renderFilterField(field)}
+          </Grid>
+        ))}
+      </Grid>
     </Box>
+    
   );
 }

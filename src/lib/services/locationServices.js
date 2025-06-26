@@ -5,18 +5,32 @@ import axios from "axios";
 // ===================================================================================
 
 /**
- * Mengambil daftar semua lokasi.
- * Ideal untuk digunakan pada tabel data atau dropdown.
+ * Mengambil daftar lokasi dengan paginasi.
+ * @param {object} params - Opsi untuk query, seperti { page, limit }.
+ * @returns {Promise<object>} - Objek respons dari API, termasuk data dan info paginasi.
+ */
+export async function getPaginatedLocations({ page = 1, limit = 20 }) {
+    try {
+        const queryParams = new URLSearchParams({ page, limit }).toString();
+        const response = await axios.get(`/api/locations?${queryParams}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching paginated locations:", error.response?.data || error.message);
+        throw new Error(error.response?.data?.message || "Gagal mengambil data lokasi.");
+    }
+}
+
+/**
+ * Mengambil daftar semua lokasi untuk dropdown.
  * @returns {Promise<object>} - Objek respons dari API, berisi { success, data: [...] }.
  */
 export async function getAllLocations() {
     try {
-        const response = await axios.get('/api/locations');
+        const response = await axios.get('/api/locations?all=true');
         return response.data;
     } catch (error) {
         console.error("Error fetching all locations:", error.response?.data || error.message);
-        // Melemparkan error dengan pesan yang lebih konsisten
-        throw new Error(error.response?.data?.message || "Gagal mengambil data lokasi.");
+        throw new Error(error.response?.data?.message || "Gagal mengambil semua data lokasi.");
     }
 }
 
@@ -31,7 +45,6 @@ export async function createLocation(locationData) {
         return response.data;
     } catch (error) {
         console.error("Error creating location:", error.response?.data || error.message);
-        // Melemparkan objek error dari backend agar bisa ditangani di form
         throw error.response?.data || new Error("Gagal membuat lokasi baru.");
     }
 }
@@ -83,7 +96,6 @@ export async function deleteLocation(id) {
         return response.data;
     } catch (error) {
         console.error(`Error deleting location with ID ${id}:`, error.response?.data || error.message);
-        // Melemparkan error dengan pesan dari backend, misalnya jika lokasi masih digunakan
         throw new Error(error.response?.data?.message || `Gagal menghapus lokasi dengan ID ${id}.`);
     }
 }

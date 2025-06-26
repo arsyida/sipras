@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import connectToDatabase from '@/lib/database/db';
 import Location from '@/models/Location';
-import Asset from '@/models/Asset'; // Diperlukan untuk validasi penghapusan
+import Asset from '@/models/Asset';
 
 // --- Skema Validasi Zod ---
 const locationSchema = z.object({
@@ -18,6 +18,25 @@ const locationSchema = z.object({
 // ===================================================================================
 //  OPERASI PADA KOLEKSI (Banyak Lokasi)
 // ===================================================================================
+
+/**
+ * BARU: Mengambil daftar lokasi dengan paginasi dan sorting.
+ * @param {object} options - Opsi untuk query.
+ * @returns {Promise<{data: Array<object>, totalItems: number}>} Objek berisi data dan jumlah total item.
+ */
+export async function getPaginatedLocations({ page = 1, limit = 20, sortBy = 'building', order = 'asc', filters = {} }) {
+  await connectToDatabase();
+  const skip = (page - 1) * limit;
+  const sortOptions = { [sortBy]: order === 'desc' ? -1 : 1, floor: 1, name: 1 }; // Tambahan sort sekunder
+
+  const [data, totalItems] = await Promise.all([
+    Location.find(filters).sort(sortOptions).skip(skip).limit(limit).lean(),
+    Location.countDocuments(filters)
+  ]);
+
+  return { data, totalItems };
+}
+
 
 /**
  * Mengambil daftar semua lokasi dari database.
@@ -33,7 +52,6 @@ export async function getAllLocations() {
  * Membuat lokasi baru setelah validasi.
  * @param {object} data - Data untuk lokasi baru.
  * @returns {Promise<object>} Dokumen lokasi yang baru dibuat.
- * @throws {Error} Melemparkan error dengan flag 'isValidationError' atau 'isDuplicate'.
  */
 export async function createLocation(data) {
   const validation = locationSchema.safeParse(data);
@@ -58,14 +76,13 @@ export async function createLocation(data) {
 }
 
 // ===================================================================================
-//  OPERASI PADA DOKUMEN TUNGGAL (Berdasarkan ID) - BARU DITAMBAHKAN
+//  OPERASI PADA DOKUMEN TUNGGAL (Berdasarkan ID)
 // ===================================================================================
 
 /**
  * Mengambil satu lokasi berdasarkan ID.
  * @param {string} id - ID dari lokasi.
  * @returns {Promise<object>} Dokumen lokasi yang ditemukan.
- * @throws {Error} Melemparkan error dengan flag 'isNotFound' jika tidak ditemukan.
  */
 export async function getLocationById(id) {
   await connectToDatabase();
@@ -84,10 +101,8 @@ export async function getLocationById(id) {
  * @param {string} id - ID dari lokasi yang akan diperbarui.
  * @param {object} data - Data baru untuk lokasi.
  * @returns {Promise<object>} Dokumen lokasi yang sudah diperbarui.
- * @throws {Error} Melemparkan error 'isNotFound', 'isValidationError', atau 'isDuplicate'.
  */
 export async function updateLocationById(id, data) {
-  // Gunakan .partial() untuk memperbolehkan update sebagian field saja.
   const validation = locationSchema.partial().safeParse(data);
   if (!validation.success) {
     const validationError = new Error('Input tidak valid.');
@@ -122,13 +137,11 @@ export async function updateLocationById(id, data) {
 /**
  * Menghapus satu lokasi berdasarkan ID.
  * @param {string} id - ID lokasi yang akan dihapus.
- * @returns {Promise<void>} Tidak mengembalikan apa-apa jika sukses.
- * @throws {Error} Melemparkan error 'isConflict' jika lokasi masih digunakan atau 'isNotFound'.
+ * @returns {Promise<void>}
  */
 export async function deleteLocationById(id) {
   await connectToDatabase();
 
-  // Validasi bisnis: Pastikan lokasi tidak sedang digunakan oleh aset manapun.
   const assetCount = await Asset.countDocuments({ location: id });
   if (assetCount > 0) {
     const conflictError = new Error(`Lokasi tidak dapat dihapus karena masih menjadi tempat bagi ${assetCount} aset.`);

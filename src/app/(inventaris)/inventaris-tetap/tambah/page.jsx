@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 
 // Komponen
 import FormComponent from '@/components/common/FormComponent'; // Pastikan path ini benar
-import InventoryPageLayout from '@/components/common/InventoryPageLayout';
 import { Box, CircularProgress, Alert } from '@mui/material';
 
 // Service untuk mengambil data
 import { getAllProductsForDropdown } from '@/lib/services/productServices';
 import { getAllLocations } from '@/lib/services/locationServices';
 import { createAsset } from '@/lib/services/assetServices'; 
+import PageLayout from '@/components/common/PageLayout';
 
 /**
  * Halaman untuk menambahkan data inventaris tetap baru dengan error handling yang baik.
@@ -131,7 +131,7 @@ export default function TambahInventarisTetapPage() {
     if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
 
     return (
-        <InventoryPageLayout title="Tambah Inventaris Tetap Baru">
+        <PageLayout title="Tambah Inventaris Tetap Baru">
             {submitError && !Object.keys(fieldErrors).length && (
                 <Alert severity="error" sx={{ mb: 2 }}>{submitError}</Alert>
             )}
@@ -146,6 +146,6 @@ export default function TambahInventarisTetapPage() {
                 onCancel={handleCancel}
                 isSubmitting={isSubmitting} // Kirim status submitting ke form
             />
-        </InventoryPageLayout>
+        </PageLayout>
     );
 }

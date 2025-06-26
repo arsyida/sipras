@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 
 // Menggunakan nama komponen yang lebih generik
-import InventoryPageLayout from '@/components/common/InventoryPageLayout';
 import FilterBarComponent from '@/components/common/FilterBarComponent';
 import TableComponent from '@/components/common/TableComponent'; 
 
@@ -12,6 +11,7 @@ import TableComponent from '@/components/common/TableComponent';
 import { Typography, Tooltip, IconButton } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import InfoIcon from '@mui/icons-material/Info';
+import PageLayout from '@/components/common/PageLayout';
 
 // --- DATA DUMMY (Di aplikasi nyata, ini akan datang dari API) ---
 const mockInventoryData = [
@@ -111,7 +111,7 @@ export default function InventarisTetapPage() {
     }), [inventoryData]);
 
     return (
-        <InventoryPageLayout
+        <PageLayout
             title="Inventaris Tetap"
             onAdd={handleAddItem}
             onGenerateReport={handleGenerateReport}
@@ -134,6 +134,6 @@ export default function InventarisTetapPage() {
                     </Tooltip>
                 )}
             />
-        </InventoryPageLayout>
+        </PageLayout>
     );
 }
