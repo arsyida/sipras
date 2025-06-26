@@ -45,8 +45,7 @@ export default function TableComponent({ columns, data, renderActionCell }) {
             <TableRow key={row.id || rowIndex} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
               {columns.map((column) => (
                 <TableCell key={column.id}>
-                  {/* Gunakan renderCell jika ada, jika tidak, tampilkan data biasa */}
-                  {column.renderCell ? column.renderCell(row) : row[column.id]}
+                  {column.renderCell ? column.renderCell(row, rowIndex) : row[column.id]}
                 </TableCell>
               ))}
               {/* Render sel untuk kolom Aksi jika ada */}

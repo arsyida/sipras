@@ -6,7 +6,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 // Komponen generik
 import InventoryPageLayout from '@/components/common/InventoryPageLayout';
 import FilterBarComponent from '@/components/common/FilterBarComponent';
-import TableComponent from '@/components/common/TableComponent'; 
+import TableComponent from '@/components/common/TableComponent';
 
 // MUI Components
 import { Tooltip, IconButton, Box, CircularProgress, Typography, Alert } from '@mui/material';
@@ -26,7 +26,7 @@ import { getAllLocations } from '@/lib/services/locationServices';
 export default function InventarisLokasiPage() {
     const theme = useTheme();
     const router = useRouter();
-    
+
     // --- STATE MANAGEMENT ---
     const [locations, setLocations] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -44,10 +44,10 @@ export default function InventarisLokasiPage() {
                 setLoading(true);
                 setError(null);
                 const response = await getAllLocations();
-                
+
                 // Asumsi API mengembalikan objek { success: true, data: [...] }
-                setLocations(response.data || []); 
-                
+                setLocations(response.data || []);
+
             } catch (err) {
                 console.error("Gagal memuat data lokasi:", err);
                 setError("Gagal memuat data lokasi. Silakan coba lagi nanti.");
@@ -65,14 +65,13 @@ export default function InventarisLokasiPage() {
 
     const handleAddItem = () => router.push('/inventaris/lokasi/tambah');
     const handleGenerateReport = () => console.log("Membuat laporan lokasi...");
-    const handleNavigateToDetail = (item) => router.push(`/inventaris/lokasi/${item._id}`);
     const handleEdit = (item) => router.push(`/inventaris/lokasi/edit/${item._id}`);
     const handleDelete = (item) => console.log("Menghapus lokasi:", item._id);
 
     // --- DATA PROCESSING (FILTERING) ---
     const filteredData = useMemo(() => {
         if (!locations) return [];
-        
+
         return locations.filter(item => {
             const buildingMatch = filters.gedung ? item.building === filters.gedung : true;
             const floorMatch = filters.lantai ? item.floor === filters.lantai : true;
@@ -83,11 +82,12 @@ export default function InventarisLokasiPage() {
 
     // --- COLUMN & FILTER DEFINITIONS ---
     const columns = [
+        { id: 'no', label: 'No', align: 'center', renderCell: (row, index) => index + 1 },
         { id: 'building', label: 'Gedung' },
         { id: 'floor', label: 'Lantai' },
         { id: 'name', label: 'Nama Ruang' },
     ];
-    
+
     const filterOptions = useMemo(() => {
         if (!locations) return { gedung: [], lantai: [] };
         return {
@@ -105,9 +105,9 @@ export default function InventarisLokasiPage() {
             onAdd={handleAddItem}
             onGenerateReport={handleGenerateReport}
         >
-            <FilterBarComponent 
-                filters={filters} 
-                onFilterChange={handleFilterChange} 
+            <FilterBarComponent
+                filters={filters}
+                onFilterChange={handleFilterChange}
                 options={filterOptions}
                 searchLabel="Cari Nama Ruang"
                 searchKey="name"
@@ -117,9 +117,6 @@ export default function InventarisLokasiPage() {
                 data={filteredData}
                 renderActionCell={(row) => (
                     <Box>
-                         <Tooltip title="Lihat Detail">
-                            <IconButton onClick={() => handleNavigateToDetail(row)}><InfoIcon color="info" /></IconButton>
-                        </Tooltip>
                         <Tooltip title="Edit">
                             <IconButton onClick={() => handleEdit(row)}><EditIcon color="action" /></IconButton>
                         </Tooltip>
