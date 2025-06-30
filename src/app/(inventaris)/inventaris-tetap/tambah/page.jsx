@@ -81,8 +81,6 @@ export default function TambahInventarisTetapPage() {
               { value: 'Kurang Baik', label: 'Kurang Baik' },
           ]
         },
-        
-        { name: 'attributes', label: 'Panjang (optional)', type: 'text', optional: true },
     ];
 
     const handleFormChange = (name, value) => {

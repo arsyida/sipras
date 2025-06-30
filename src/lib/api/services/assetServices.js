@@ -22,7 +22,7 @@ const assetRegistrationSchema = z.object({
   location: z.string().refine((val) => Types.ObjectId.isValid(val), {
     message: "ID Lokasi tidak valid.",
   }),
-  condition: z.enum(['baik', 'rusak ringan', 'rusak berat', 'perbaikan']).default('baik'),
+  condition: z.enum(['Baik', 'Rusak', 'Kurang Baik']).default('Baik'),
   purchase_date: z.coerce.date().optional(),
   estimated_price: z.number().optional(),
   attributes: z.record(z.any()).optional(),
