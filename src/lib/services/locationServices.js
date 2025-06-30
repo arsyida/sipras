@@ -1,37 +1,49 @@
+// Lokasi: /lib/services/locationServices.js (Frontend)
+
 import axios from "axios";
 
-// ===================================================================================
-//  OPERASI PADA KOLEKSI (Banyak Lokasi)
-// ===================================================================================
-
 /**
- * Mengambil daftar lokasi dengan paginasi.
- * @param {object} params - Opsi untuk query, seperti { page, limit }.
- * @returns {Promise<object>} - Objek respons dari API, termasuk data dan info paginasi.
+ * Mengambil daftar lokasi dengan paginasi DAN FILTER.
+ * @param {object} params - Opsi untuk query.
+ * @param {number} params.page - Halaman saat ini.
+ * @param {number} params.limit - Jumlah item per halaman.
+ * @param {object} params.filters - Objek berisi filter (name, gedung, lantai).
+ * @returns {Promise<object>} - Objek respons dari API.
  */
-export async function getPaginatedLocations({ page = 1, limit = 20 }) {
-    try {
-        const queryParams = new URLSearchParams({ page, limit }).toString();
-        const response = await axios.get(`/api/locations?${queryParams}`);
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching paginated locations:", error.response?.data || error.message);
-        throw new Error(error.response?.data?.message || "Gagal mengambil data lokasi.");
-    }
+export async function getPaginatedLocations({ page = 1, limit = 10, filters = {} }) {
+  try {
+    // --- PERUBAHAN KUNCI DI SINI ---
+    // Gabungkan pagination dan filter menjadi satu query string.
+    const queryParams = new URLSearchParams({
+      page,
+      limit,
+      ...filters // Spread filter untuk menambahkan name, gedung, lantai jika ada
+    }).toString();
+    
+    // Filter query yang kosong (cth: 'name=') agar tidak dikirim
+    const cleanQueryParams = queryParams.replace(/[^=&]+=&/g, '').replace(/&$/, '');
+
+    const response = await axios.get(`/api/locations?${cleanQueryParams}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching paginated locations:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "Gagal mengambil data lokasi.");
+  }
 }
 
 /**
  * Mengambil daftar semua lokasi untuk dropdown.
- * @returns {Promise<object>} - Objek respons dari API, berisi { success, data: [...] }.
+ * @returns {Promise<object>} - Objek respons dari API.
  */
-export async function getAllLocations() {
-    try {
-        const response = await axios.get('/api/locations?all=true');
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching all locations:", error.response?.data || error.message);
-        throw new Error(error.response?.data?.message || "Gagal mengambil semua data lokasi.");
-    }
+export async function getAllLocationsForDropdown() {
+  try {
+    // Kita akan membuat API handler mengenali parameter 'all=true'
+    const response = await axios.get('/api/locations?all=true');
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching all locations:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "Gagal mengambil semua data lokasi.");
+  }
 }
 
 /**
@@ -40,13 +52,13 @@ export async function getAllLocations() {
  * @returns {Promise<object>} - Objek respons dari API.
  */
 export async function createLocation(locationData) {
-    try {
-        const response = await axios.post('/api/locations', locationData);
-        return response.data;
-    } catch (error) {
-        console.error("Error creating location:", error.response?.data || error.message);
-        throw error.response?.data || new Error("Gagal membuat lokasi baru.");
-    }
+  try {
+    const response = await axios.post('/api/locations', locationData);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating location:", error.response?.data || error.message);
+    throw error.response?.data || new Error("Gagal membuat lokasi baru.");
+  }
 }
 
 

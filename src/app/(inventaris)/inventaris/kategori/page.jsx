@@ -1,11 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useState, useEffect, useCallback } from "react";
-import PageLayout from "@/components/common/PageLayout";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+
+// Komponen generik
+import PageLayout from "@/components/layouts/PageLayout";
 import FilterBarComponent from "@/components/common/FilterBarComponent";
 import TableComponent from "@/components/common/TableComponent";
 import PaginationComponent from "@/components/common/PaginationComponent";
+
+// MUI Components
 import {
   Tooltip,
   IconButton,
@@ -13,21 +17,32 @@ import {
   CircularProgress,
   Alert,
   Button,
+  Divider,
 } from "@mui/material";
+
+// MUI Icons
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+
+// Service untuk mengambil data
 import {
   getPaginatedCategories,
   deleteCategory,
 } from "@/lib/services/categoryServices";
 
+/**
+ * Halaman utama untuk menampilkan dan mengelola daftar Kategori.
+ */
 export default function CategoryPage() {
   const router = useRouter();
+
+  // --- STATE MANAGEMENT ---
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [filters, setFilters] = useState({ name: "" });
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -35,6 +50,7 @@ export default function CategoryPage() {
     rowsPerPage: 10,
   });
 
+  // --- PENGAMBILAN DATA ---
   const fetchData = useCallback(async (page, limit, currentFilters) => {
     try {
       setLoading(true);
@@ -46,14 +62,16 @@ export default function CategoryPage() {
         filters: currentFilters,
       });
       setCategories(response.data || []);
-      setPagination((prev) => ({ ...prev, ...response.pagination }));
+      setPagination((prev) => ({ ...prev, ...response.pagination, rowsPerPage: limit, currentPage: page }));
     } catch (err) {
-      setError("Gagal memuat data kategori.");
+      console.error("Gagal memuat data kategori:", err);
+      setError("Gagal memuat data kategori. Silakan coba lagi nanti.");
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Fetch data saat halaman, baris, atau filter berubah
   useEffect(() => {
     const filtersString = JSON.stringify(filters);
     fetchData(
@@ -63,35 +81,47 @@ export default function CategoryPage() {
     );
   }, [pagination.currentPage, pagination.rowsPerPage, fetchData, filters]);
 
+  // --- EVENT HANDLERS ---
   const handleFilterChange = (key, value) => {
     setPagination((prev) => ({ ...prev, currentPage: 1 }));
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
-  const handlePageChange = (event, value) =>
+
+  const handlePageChange = (event, value) => {
     setPagination((prev) => ({ ...prev, currentPage: value }));
-  const handleRowsPerPageChange = (event) =>
+  };
+
+  const handleRowsPerPageChange = (event) => {
     setPagination((prev) => ({
       ...prev,
-      rowsPerPage: parseInt(event.target.value, 10),
+      rowsPerPage: event.target.value === "Semua" ? pagination.totalItems : parseInt(event.target.value, 10),
       currentPage: 1,
     }));
+  };
+
   const handleAddItem = () => router.push("/inventaris/kategori/tambah");
-  const handleEdit = (item) =>
-    router.push(`/inventaris/kategori/edit/${item._id}`);
+  const handleEdit = (item) => router.push(`/inventaris/kategori/edit/${item._id}`);
 
   const handleDelete = async (item) => {
-    if (window.confirm(`Yakin ingin menghapus kategori "${item.name}"?`)) {
+    if (
+      window.confirm(`Apakah Anda yakin ingin menghapus kategori "${item.name}"?`)
+    ) {
       try {
+        setDeleteError(null);
         await deleteCategory(item._id);
         alert("Kategori berhasil dihapus.");
         fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
       } catch (err) {
-        setDeleteError(err.message || "Gagal menghapus kategori.");
+        setDeleteError(
+          err.message ||
+            "Gagal menghapus kategori. Mungkin kategori masih digunakan."
+        );
       }
     }
   };
 
-  const columns = [
+  // --- COLUMN & FILTER DEFINITIONS ---
+  const columns = useMemo(() => [
     {
       id: "no",
       label: "No",
@@ -105,15 +135,24 @@ export default function CategoryPage() {
       label: "Deskripsi",
       renderCell: (row) => row.description || "-",
     },
-  ];
+    {
+        id: "productCount",
+        label: "Jumlah Produk",
+        align: "center",
+        renderCell: (row) => row.productCount || 0,
+    }
+  ], [pagination.currentPage, pagination.rowsPerPage]);
 
   const filterConfig = [
     { name: "name", label: "Cari Nama Kategori", type: "text" },
   ];
+
   const actionButtons = (
-    <Button variant="contained" onClick={handleAddItem}>
-      + Tambah Kategori
-    </Button>
+    <Box display="flex" gap={2}>
+      <Button variant="contained" onClick={handleAddItem}>
+        + Tambah Kategori
+      </Button>
+    </Box>
   );
 
   return (
@@ -123,11 +162,15 @@ export default function CategoryPage() {
           {deleteError}
         </Alert>
       )}
+
       <FilterBarComponent
         filters={filters}
         onFilterChange={handleFilterChange}
         filterConfig={filterConfig}
       />
+      
+      <Divider sx={{ my: 2 }} />
+
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", p: 5 }}>
           <CircularProgress />
@@ -138,6 +181,14 @@ export default function CategoryPage() {
         </Alert>
       ) : (
         <>
+          <PaginationComponent
+            count={pagination.totalPages}
+            page={pagination.currentPage}
+            rowsPerPage={pagination.rowsPerPage}
+            totalItems={pagination.totalItems}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleRowsPerPageChange}
+          />
           <TableComponent
             columns={columns}
             data={categories}

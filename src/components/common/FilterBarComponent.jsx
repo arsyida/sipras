@@ -11,7 +11,6 @@ import {
   MenuItem,
   InputAdornment,
   Typography,
-  Divider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 
@@ -86,7 +85,7 @@ export default function FilterBarComponent({
       </Typography>
       <Grid container spacing={2} alignItems="center">
         {filterConfig.map((field) => (
-          <Grid item xs={12} sm={6} md={3} key={field.name}>
+          <Grid key={field.name}>
             {renderFilterField(field)}
           </Grid>
         ))}

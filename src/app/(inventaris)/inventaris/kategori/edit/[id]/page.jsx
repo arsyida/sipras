@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import PageLayout from '@/components/common/PageLayout';
+import PageLayout from '@/components/layouts/PageLayout';
 import FormComponent from '@/components/common/FormComponent';
 import { Alert, Box, CircularProgress } from '@mui/material';
 import { getCategoryById, updateCategory } from '@/lib/services/categoryServices'; 

@@ -1,4 +1,4 @@
-// Lokasi: /lib/api/assetService.js
+// Lokasi: /lib/api/generateSerialNumber.js
 
 import Asset from '@/models/Asset';
 import Product from '@/models/Product';

@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 
 // Komponen generik
+import PageLayout from "@/components/layouts/PageLayout";
 import FilterBarComponent from "@/components/common/FilterBarComponent";
 import TableComponent from "@/components/common/TableComponent";
-import PageLayout from "@/components/common/PageLayout";
 import PaginationComponent from "@/components/common/PaginationComponent";
 
 // MUI Components
@@ -24,8 +24,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 // Service untuk mengambil data
 import {
-  getPaginatedBrands, // Asumsi ada service ini
-  deleteBrand, // Asumsi ada service ini
+  getPaginatedBrands,
+  deleteBrand,
 } from "@/lib/services/brandServices";
 
 /**
@@ -60,7 +60,7 @@ export default function BrandPage() {
         filters: currentFilters,
       });
       setBrands(response.data || []);
-      setPagination((prev) => ({ ...prev, ...response.pagination }));
+      setPagination((prev) => ({ ...prev, ...response.pagination, rowsPerPage: limit, currentPage: page }));
     } catch (err) {
       console.error("Gagal memuat data merk:", err);
       setError("Gagal memuat data merk. Silakan coba lagi nanti.");
@@ -71,13 +71,14 @@ export default function BrandPage() {
 
   // Fetch data saat halaman, baris, atau filter berubah
   useEffect(() => {
+    // Menggunakan JSON.stringify untuk perbandingan stabil pada objek filter
     const filtersString = JSON.stringify(filters);
     fetchData(
       pagination.currentPage,
       pagination.rowsPerPage,
       JSON.parse(filtersString)
     );
-  }, [pagination.currentPage, pagination.rowsPerPage, fetchData, filters]);
+  }, [pagination.currentPage, pagination.rowsPerPage, filters, fetchData]);
 
   // --- EVENT HANDLERS ---
   const handleFilterChange = (key, value) => {
@@ -90,16 +91,14 @@ export default function BrandPage() {
   };
 
   const handleRowsPerPageChange = (event) => {
-    const newRowsPerPage = parseInt(event.target.value, 10);
     setPagination((prev) => ({
       ...prev,
-      rowsPerPage: newRowsPerPage > 0 ? newRowsPerPage : prev.totalItems,
+      rowsPerPage: event.target.value === "Semua" ? pagination.totalItems : parseInt(event.target.value, 10),
       currentPage: 1,
     }));
   };
 
   const handleAddItem = () => router.push("/inventaris/merk/tambah");
-  const handleGenerateReport = () => console.log("Membuat laporan merk...");
   const handleEdit = (item) => router.push(`/inventaris/merk/edit/${item._id}`);
 
   const handleDelete = async (item) => {
@@ -107,13 +106,11 @@ export default function BrandPage() {
       window.confirm(`Apakah Anda yakin ingin menghapus merk "${item.name}"?`)
     ) {
       try {
+        setDeleteError(null);
         await deleteBrand(item._id);
         alert("Merk berhasil dihapus.");
-        await fetchData(
-          pagination.currentPage,
-          pagination.rowsPerPage,
-          filters
-        );
+        // Refresh data di halaman saat ini
+        fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
       } catch (err) {
         setDeleteError(
           err.message ||
@@ -124,7 +121,7 @@ export default function BrandPage() {
   };
 
   // --- COLUMN & FILTER DEFINITIONS ---
-  const columns = [
+  const columns = useMemo(() => [
     {
       id: "no",
       label: "No",
@@ -133,12 +130,13 @@ export default function BrandPage() {
         (pagination.currentPage - 1) * pagination.rowsPerPage + index + 1,
     },
     { id: "name", label: "Nama Merk" },
+    { id: "productCount", label: "Jumlah Produk", renderCell: (row) => row.productCount || 0 },
     {
       id: "description",
       label: "Deskripsi",
       renderCell: (row) => row.description || "-",
     },
-  ];
+  ], [pagination.currentPage, pagination.rowsPerPage]);
 
   const filterConfig = [
     { name: "name", label: "Cari Nama Merk", type: "text" },
@@ -146,9 +144,6 @@ export default function BrandPage() {
 
   const actionButtons = (
     <Box display="flex" gap={2}>
-      <Button variant="outlined" onClick={handleGenerateReport}>
-        Laporan
-      </Button>
       <Button variant="contained" onClick={handleAddItem}>
         + Tambahkan
       </Button>
@@ -169,15 +164,8 @@ export default function BrandPage() {
         filterConfig={filterConfig}
       />
 
-      <Divider/>
-      <PaginationComponent
-        count={pagination.totalPages}
-        page={pagination.currentPage}
-        rowsPerPage={pagination.rowsPerPage}
-        totalItems={pagination.totalItems}
-        onPageChange={handlePageChange}
-        onRowsPerPageChange={handleRowsPerPageChange}
-      />
+      <Divider sx={{ my: 2 }}/>
+      
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", p: 5 }}>
           <CircularProgress />
@@ -188,9 +176,17 @@ export default function BrandPage() {
         </Alert>
       ) : (
         <>
+          <PaginationComponent
+            count={pagination.totalPages}
+            page={pagination.currentPage}
+            rowsPerPage={pagination.rowsPerPage}
+            totalItems={pagination.totalItems}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleRowsPerPageChange}
+          />
           <TableComponent
             columns={columns}
-            data={brands} // Gunakan data paginasi untuk tabel
+            data={brands}
             renderActionCell={(row) => (
               <Box>
                 <Tooltip title="Edit">

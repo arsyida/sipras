@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 
 // Komponen
 import FormComponent from '@/components/common/FormComponent';
-import PageLayout from '@/components/common/PageLayout';
+import PageLayout from '@/components/layouts/PageLayout';
 import { Box, CircularProgress, Alert } from '@mui/material';
 
 // Asumsi ada service untuk mengambil dan memperbarui data

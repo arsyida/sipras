@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Box, Divider } from '@mui/material';
 import BreadcrumbsComponent from '@/components/common/BreadcrumbsComponent';
-import HeaderComponent from './HeaderComponent';
+import HeaderComponent from '@/components/common/HeaderComponent';
 
 /**
  * Komponen layout utama untuk halaman.

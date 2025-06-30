@@ -1,5 +1,6 @@
 /**
  * @file Mendefinisikan endpoint API untuk resource aset (/api/assets).
+ * Berfungsi sebagai Controller yang menangani request HTTP dan memanggil service layer.
  */
 
 import { NextResponse } from 'next/server';
@@ -7,6 +8,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { validateAdmin } from '@/lib/api/validate-admin';
 
+// Impor fungsi-fungsi dari service layer
 import { getPaginatedAssets, registerNewAsset } from '@/lib/api/services/assetServices';
 
 /**
@@ -16,6 +18,7 @@ import { getPaginatedAssets, registerNewAsset } from '@/lib/api/services/assetSe
  */
 export async function GET(request) {
   try {
+    // Pengguna yang login boleh melihat daftar aset, tidak harus admin.
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -23,25 +26,35 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
 
     // Membangun objek filter secara dinamis dari query params
     const filters = {};
     for (const [key, value] of searchParams.entries()) {
-      if (['location', 'product', 'condition', 'status'].includes(key) && value) {
+      if (!value) continue; // Lewati filter dengan nilai kosong
+
+      // Filter spesifik untuk pencarian nama aset (tidak ada di skema, jadi ini contoh jika diperlukan)
+      // Untuk kasus ini, kita akan filter berdasarkan field yang ada di skema Asset
+      if (['location', 'product', 'condition', 'status'].includes(key)) {
         filters[key] = value;
+      }
+      
+      // Catatan: Jika ingin filter berdasarkan nama produk atau serial number,
+      // Anda perlu menambahkan logika $regex di sini.
+      if (key === 'serial_number') {
+        filters.serial_number = { $regex: value, $options: 'i' };
       }
     }
     
     // Panggil service untuk mendapatkan data
-    const { assets, totalAssets } = await getPaginatedAssets({ page, limit, filters });
+    const { data: assets, totalItems } = await getPaginatedAssets({ page, limit, filters });
 
-    const totalPages = Math.ceil(totalAssets / limit);
+    const totalPages = Math.ceil(totalItems / limit);
 
     return NextResponse.json({
       success: true,
       data: assets,
-      pagination: { totalAssets, totalPages, currentPage: page, limit }
+      pagination: { totalItems, totalPages, currentPage: page, limit }
     }, { status: 200 });
 
   } catch (error) {

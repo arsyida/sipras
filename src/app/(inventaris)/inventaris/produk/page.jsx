@@ -1,129 +1,236 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
-import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 
 // Komponen generik
-import FilterBarComponent from '@/components/common/FilterBarComponent';
-import TableComponent from '@/components/common/TableComponent'; 
+import PageLayout from "@/components/layouts/PageLayout";
+import FilterBarComponent from "@/components/common/FilterBarComponent";
+import TableComponent from "@/components/common/TableComponent";
+import PaginationComponent from "@/components/common/PaginationComponent";
 
 // MUI Components
-import { Tooltip, IconButton, Box, CircularProgress, Alert, Typography } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import {
+  Tooltip,
+  IconButton,
+  Box,
+  CircularProgress,
+  Alert,
+  Button,
+  Divider,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
-// Asumsi ada service untuk data
-import { getAllProducts } from '@/lib/services/productServices';
-import { getAllBrands } from '@/lib/services/brandServices';
-import { getAllCategories } from '@/lib/services/categoryServices';
-import PageLayout from '@/components/common/PageLayout';
+// Service untuk mengambil data
+import {
+  getPaginatedProducts,
+  deleteProduct,
+} from "@/lib/services/productServices";
+import { getAllBrandsForDropdown } from "@/lib/services/brandServices";
+import { getAllCategoriesForDropdown } from "@/lib/services/categoryServices";
 
 /**
- * Halaman untuk menampilkan dan mengelola daftar Produk (Master).
+ * Halaman utama untuk menampilkan dan mengelola daftar Produk.
  */
 export default function ProductPage() {
-    const router = useRouter();
-    
-    const [products, setProducts] = useState([]);
-    const [options, setOptions] = useState({ brand: [], category: [] });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [filters, setFilters] = useState({ name: '', brand: '', category: '' });
+  const router = useRouter();
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                // Ambil semua data secara paralel
-                const [productRes, brandRes, categoryRes] = await Promise.all([
-                    getAllProducts(),
-                    getAllBrands(),
-                    getAllCategories()
-                ]);
+  // --- STATE MANAGEMENT ---
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [filters, setFilters] = useState({ name: "", brand: "", category: "" });
+  const [filterOptions, setFilterOptions] = useState({
+    brand: [],
+    category: [],
+  });
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    rowsPerPage: 10,
+    totalItems: 0,
+  });
 
-                // Asumsi service mengembalikan { success: true, data: [...] }
-                setProducts(productRes.data || []);
-                setOptions({
-                    brand: brandRes.data.map(b => b.name) || [],
-                    category: categoryRes.data.map(c => c.name) || [],
-                });
+  // --- PENGAMBILAN DATA ---
+  const fetchData = useCallback(async (page, limit, currentFilters) => {
+    try {
+      setLoading(true);
+      setError(null);
+      setDeleteError(null);
+      const response = await getPaginatedProducts({
+        page,
+        limit,
+        filters: currentFilters,
+      });
+      setProducts(response.data || []);
+      setPagination((prev) => ({ ...prev, ...response.pagination, rowsPerPage: limit, currentPage: page }));
+    } catch (err) {
+      console.error("Gagal memuat data produk:", err);
+      setError("Gagal memuat data produk. Silakan coba lagi nanti.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-            } catch (err) {
-                console.error("Gagal memuat data produk:", err);
-                setError("Gagal memuat data produk.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
-
-    const handleFilterChange = (key, value) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
-    };
-
-    const handleAddItem = () => router.push('/inventaris/produk/tambah');
-    const handleEdit = (item) => router.push(`/inventaris/produk/edit/${item._id}`);
-    const handleDelete = (item) => console.log("Menghapus produk:", item._id);
-
-    const filteredData = useMemo(() => {
-        if (!products) return [];
-        return products.filter(item => {
-            const nameMatch = item.name.toLowerCase().includes(filters.name.toLowerCase());
-            // Filter berdasarkan nama dari objek brand dan kategori
-            const brandMatch = filters.brand ? item.brand?.name === filters.brand : true;
-            const categoryMatch = filters.category ? item.category?.name === filters.category : true;
-            return nameMatch && brandMatch && categoryMatch;
+  // Ambil opsi untuk dropdown filter saat komponen pertama kali dimuat
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const [brandRes, categoryRes] = await Promise.all([
+          getAllBrandsForDropdown(),
+          getAllCategoriesForDropdown(),
+        ]);
+        setFilterOptions({
+          brand: brandRes.data.map((b) => ({ value: b._id, label: b.name })),
+          category: categoryRes.data.map((c) => ({
+            value: c._id,
+            label: c.name,
+          })),
         });
-    }, [products, filters]);
+      } catch (err) {
+        console.error("Gagal memuat opsi filter:", err);
+      }
+    };
+    fetchFilterOptions();
+  }, []);
 
-    // Definisi kolom disesuaikan dengan skema
-    const columns = [
-        { id: 'product_code', label: 'Kode Produk' },
-        { id: 'name', label: 'Nama Produk' },
-        { 
-          id: 'category', 
-          label: 'Kategori',
-          // Render nama dari objek kategori yang di-populate
-          renderCell: (row) => row.category?.name || 'N/A'
-        },
-        { 
-          id: 'brand', 
-          label: 'Merk',
-          // Render nama dari objek brand yang di-populate
-          renderCell: (row) => row.brand?.name || 'N/A'
-        },
-        { id: 'measurement_unit', label: 'Satuan' },
-        { id: 'totalStock', label: 'Total Stok' }, // Asumsi 'totalStock' dihitung oleh backend
-    ];
-
-    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
-    if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
-
-    return (
-        <PageLayout title="Manajemen Produk" onAdd={handleAddItem}>
-            <FilterBarComponent
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                searchLabel="Cari Nama Produk"
-                searchKey="name"
-                options={options} // Menggunakan opsi dinamis untuk brand dan kategori
-            />
-            <TableComponent
-                columns={columns}
-                data={filteredData}
-                renderActionCell={(row) => (
-                    <Box>
-                        <Tooltip title="Edit">
-                            <IconButton onClick={() => handleEdit(row)}><EditIcon color="action" /></IconButton>
-                        </Tooltip>
-                        <Tooltip title="Hapus">
-                            <IconButton onClick={() => handleDelete(row)}><DeleteIcon color="error" /></IconButton>
-                        </Tooltip>
-                    </Box>
-                )}
-            />
-        </PageLayout>
+  // Panggil fetchData setiap kali ada perubahan pada pagination atau filter
+  useEffect(() => {
+    const filtersString = JSON.stringify(filters);
+    fetchData(
+      pagination.currentPage,
+      pagination.rowsPerPage,
+      JSON.parse(filtersString)
     );
+  }, [pagination.currentPage, pagination.rowsPerPage, filters, fetchData]);
+
+  // --- EVENT HANDLERS ---
+  const handleFilterChange = (key, value) => {
+    setPagination((prev) => ({ ...prev, currentPage: 1 }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handlePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, currentPage: value }));
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    setPagination((prev) => ({
+      ...prev,
+      rowsPerPage: event.target.value === "Semua" ? pagination.totalItems : parseInt(event.target.value, 10),
+      currentPage: 1,
+    }));
+  };
+
+  const handleAddItem = () => router.push("/inventaris/produk/tambah");
+  const handleEdit = (item) => router.push(`/inventaris/produk/edit/${item._id}`);
+
+  const handleDelete = async (item) => {
+    if (window.confirm(`Yakin ingin menghapus produk "${item.name} - ${item.brand?.name || ''}"?`)) {
+      try {
+        setDeleteError(null);
+        await deleteProduct(item._id);
+        alert("Produk berhasil dihapus.");
+        fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
+      } catch (err) {
+        setDeleteError(err.message || "Gagal menghapus produk.");
+      }
+    }
+  };
+
+  // --- COLUMN & FILTER DEFINITIONS ---
+  const columns = useMemo(() => [
+    {
+      id: "no",
+      label: "No",
+      align: "center",
+      renderCell: (row, index) =>
+        (pagination.currentPage - 1) * pagination.rowsPerPage + index + 1,
+    },
+    { id: "product_code", label: "Kode" },
+    { id: "name", label: "Nama Produk" },
+    { id: "brand", label: "Merk", renderCell: (row) => row.brand?.name || "-" },
+    { id: "category", label: "Kategori", renderCell: (row) => row.category?.name || "-" },
+    { id: "measurement_unit", label: "Satuan" },
+    { id: "assetCount", label: "Jumlah Aset", align: "center", renderCell: (row) => row.assetCount || 0 },
+  ], [pagination.currentPage, pagination.rowsPerPage]);
+
+  const filterConfig = useMemo(() => [
+    { name: "name", label: "Cari Nama Produk", type: "text" },
+    {
+      name: "brand",
+      label: "Merk",
+      type: "select",
+      options: filterOptions.brand,
+    },
+    {
+      name: "category",
+      label: "Kategori",
+      type: "select",
+      options: filterOptions.category,
+    },
+  ], [filterOptions]);
+
+  const actionButtons = (
+    <Button variant="contained" onClick={handleAddItem}>
+      + Tambah Produk
+    </Button>
+  );
+
+  return (
+    <PageLayout title="Manajemen Produk" actionButtons={actionButtons}>
+      {deleteError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {deleteError}
+        </Alert>
+      )}
+      <FilterBarComponent
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        filterConfig={filterConfig}
+      />
+      <Divider sx={{ my: 2 }}/>
+      
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", p: 5 }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ m: 3 }}>
+          {error}
+        </Alert>
+      ) : (
+        <>
+          <PaginationComponent
+            count={pagination.totalPages}
+            page={pagination.currentPage}
+            rowsPerPage={pagination.rowsPerPage}
+            totalItems={pagination.totalItems}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleRowsPerPageChange}
+          />
+          <TableComponent
+            columns={columns}
+            data={products}
+            renderActionCell={(row) => (
+              <Box>
+                <Tooltip title="Edit">
+                  <IconButton onClick={() => handleEdit(row)}>
+                    <EditIcon color="action" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Hapus">
+                  <IconButton onClick={() => handleDelete(row)}>
+                    <DeleteIcon color="error" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            )}
+          />
+        </>
+      )}
+    </PageLayout>
+  );
 }

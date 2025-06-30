@@ -9,7 +9,7 @@ import { Box, CircularProgress, Alert } from '@mui/material';
 
 // Service untuk mengambil dan memperbarui data
 import { getLocationById, updateLocation } from '@/lib/services/locationServices'; 
-import PageLayout from '@/components/common/PageLayout';
+import PageLayout from '@/components/layouts/PageLayout';
 
 /**
  * Halaman untuk mengedit data lokasi yang sudah ada.

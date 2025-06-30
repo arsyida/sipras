@@ -1,4 +1,4 @@
-// Lokasi: /lib/services/brandServices.js (atau path yang sesuai di frontend Anda)
+// Lokasi: /lib/services/brandServices.js (Frontend)
 
 import axios from "axios";
 
@@ -9,17 +9,29 @@ import axios from "axios";
 /**
  * Mengambil daftar brand dengan paginasi dan filter.
  * @param {object} params - Opsi untuk query.
+ * @param {number} params.page - Halaman saat ini.
+ * @param {number} params.limit - Jumlah item per halaman.
+ * @param {object} params.filters - Objek berisi filter (misalnya, { name: '...' }).
  * @returns {Promise<object>} - Objek respons dari API.
  */
 export async function getPaginatedBrands({ page = 1, limit = 10, filters = {} }) {
-    try {
-        const queryParams = new URLSearchParams({ page, limit, ...filters }).toString();
-        const response = await axios.get(`/api/brands?${queryParams}`);
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching paginated brands:", error.response?.data || error.message);
-        throw error.response?.data || new Error("Gagal mengambil data merk.");
-    }
+  try {
+    // Gabungkan pagination dan filter menjadi satu query string.
+    const queryParams = new URLSearchParams({
+      page,
+      limit,
+      ...filters
+    }).toString();
+    
+    // Filter query yang kosong agar tidak dikirim (misal: 'name=')
+    const cleanQueryParams = queryParams.replace(/[^=&]+=&/g, '').replace(/&$/, '');
+
+    const response = await axios.get(`/api/brands?${cleanQueryParams}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching paginated brands:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "Gagal mengambil data merk.");
+  }
 }
 
 /**
@@ -27,13 +39,13 @@ export async function getPaginatedBrands({ page = 1, limit = 10, filters = {} })
  * @returns {Promise<object>} - Objek respons dari API.
  */
 export async function getAllBrandsForDropdown() {
-    try {
-        const response = await axios.get('/api/brands?all=true');
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching all brands for dropdown:", error.response?.data || error.message);
-        throw error.response?.data || new Error("Gagal mengambil data merk untuk dropdown.");
-    }
+  try {
+    const response = await axios.get('/api/brands?all=true');
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching all brands for dropdown:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "Gagal mengambil data merk untuk dropdown.");
+  }
 }
 
 /**
@@ -42,13 +54,13 @@ export async function getAllBrandsForDropdown() {
  * @returns {Promise<object>} - Objek respons dari API.
  */
 export async function createBrand(brandData) {
-    try {
-        const response = await axios.post('/api/brands', brandData);
-        return response.data;
-    } catch (error) {
-        console.error("Error creating brand:", error.response?.data || error.message);
-        throw error.response?.data || new Error("Gagal membuat merk baru.");
-    }
+  try {
+    const response = await axios.post('/api/brands', brandData);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating brand:", error.response?.data || error.message);
+    throw error.response?.data || new Error("Gagal membuat merk baru.");
+  }
 }
 
 

@@ -20,35 +20,33 @@ const categorySchema = z.object({
 // ===================================================================================
 
 /**
- * Mengambil daftar kategori dengan paginasi dan filter.
+ * Mengambil daftar brand dengan paginasi, sorting, dan filter.
  * @param {object} options - Opsi untuk query.
- * @returns {Promise<{data: Array<object>, totalItems: number}>}
+ * @returns {Promise<{data: Array<object>, totalItems: number}>} Objek berisi data dan jumlah total item.
  */
-export async function getPaginatedCategories({ page = 1, limit = 10, filters = {} }) {
-    await connectToDatabase();
-    const skip = (page - 1) * limit;
-    
-    const query = {};
-    if (filters.name) {
-        query.name = { $regex: filters.name, $options: 'i' };
-    }
+export async function getPaginatedCategories({ page = 1, limit = 10, sortBy = 'name', order = 'asc', filters = {} }) {
+  await connectToDatabase();
+  const skip = (page - 1) * limit;
+  const sortOptions = { [sortBy]: order === 'desc' ? -1 : 1 };
 
-    const [data, totalItems] = await Promise.all([
-        Category.find(query).sort({ name: 1 }).skip(skip).limit(limit).lean(),
-        Category.countDocuments(query)
-    ]);
-    
-    const categoriesWithCount = await Promise.all(data.map(async (category) => {
-        const assetCount = await Product.countDocuments({ category: category._id });
-        return { ...category, assetCount };
-    }));
+  // Logika find(filters) akan berfungsi karena API handler sudah menyiapkan objek filter.
+  const [data, totalItems] = await Promise.all([
+    Category.find(filters).sort(sortOptions).skip(skip).limit(limit).lean(),
+    Category.countDocuments(filters)
+  ]);
 
-    return { data: categoriesWithCount, totalItems };
+  // Menambahkan hitungan produk untuk setiap kategori secara efisien
+  const categoriesWithCount = await Promise.all(data.map(async (category) => {
+    const productCount = await Product.countDocuments({ category: category._id });
+    return { ...category, productCount };
+  }));
+
+  return { data: categoriesWithCount, totalItems };
 }
 
 /**
- * Mengambil semua kategori untuk dropdown.
- * @returns {Promise<Array<object>>}
+ * Mengambil daftar semua kategori dari database (untuk dropdown).
+ * @returns {Promise<Array<object>>} Array berisi semua data kategori.
  */
 export async function getAllCategoriesForDropdown() {
   await connectToDatabase();

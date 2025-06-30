@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import PageLayout from '@/components/common/PageLayout';
+import PageLayout from '@/components/layouts/PageLayout';
 import FormComponent from '@/components/common/FormComponent';
 import { Alert, Box } from '@mui/material';
 import { createCategory } from '@/lib/services/categoryServices';

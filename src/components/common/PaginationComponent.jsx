@@ -34,13 +34,13 @@ export default function PaginationComponent({
         </Typography>
         <FormControl size="small" variant="outlined">
           <Select
-            value={rowsPerPage}
+            value={rowsPerPage > 50 ? "Semua" : rowsPerPage}
             onChange={onRowsPerPageChange}
           >
             <MenuItem value={10}>10</MenuItem>
             <MenuItem value={20}>20</MenuItem>
             <MenuItem value={50}>50</MenuItem>
-            <MenuItem value={-1}>Semua</MenuItem>
+            <MenuItem value={"Semua"}>Semua</MenuItem>
           </Select>
         </FormControl>
         {totalItems > 0 && (

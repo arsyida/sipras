@@ -1,6 +1,6 @@
-import React from "react";
+import React, { use } from "react";
 import Providers from "@/components/providers/provider";
-import Navbar from "@/components/common/AppBar";
+import AppLayout from "@/components/layouts/AppLayout";
 
 export const metadata = {
   title: "Sipras",
@@ -12,10 +12,12 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="id">
       <body>
         <Providers>
-          <Navbar>{children}</Navbar>
+          <AppLayout>
+            {children}
+          </AppLayout>
         </Providers>
       </body>
     </html>

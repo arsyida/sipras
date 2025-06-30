@@ -9,7 +9,7 @@ import { Alert } from "@mui/material";
 
 // Service untuk membuat data baru
 import { createLocation } from "@/lib/services/locationServices";
-import PageLayout from "@/components/common/PageLayout";
+import PageLayout from "@/components/layouts/PageLayout";
 
 /**
  * Halaman untuk menambahkan data lokasi baru.

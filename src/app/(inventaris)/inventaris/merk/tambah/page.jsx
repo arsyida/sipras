@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 // Komponen
 import FormComponent from '@/components/common/FormComponent';
-import PageLayout from '@/components/common/PageLayout';
+import PageLayout from '@/components/layouts/PageLayout';
 import { Box, Alert } from '@mui/material';
 
 // Asumsi ada service untuk membuat data merk baru

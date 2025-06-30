@@ -18,17 +18,18 @@ const locationSchema = z.object({
 // ===================================================================================
 //  OPERASI PADA KOLEKSI (Banyak Lokasi)
 // ===================================================================================
-
 /**
- * BARU: Mengambil daftar lokasi dengan paginasi dan sorting.
+ * Mengambil daftar lokasi dengan paginasi, sorting, dan filter.
+ * Fungsi ini sekarang akan menerima filter dari API Handler.
  * @param {object} options - Opsi untuk query.
- * @returns {Promise<{data: Array<object>, totalItems: number}>} Objek berisi data dan jumlah total item.
+ * @returns {Promise<{data: Array<object>, totalItems: number}>}
  */
-export async function getPaginatedLocations({ page = 1, limit = 20, sortBy = 'building', order = 'asc', filters = {} }) {
+export async function getPaginatedLocations({ page = 1, limit = 10, sortBy = 'building', order = 'asc', filters = {} }) {
   await connectToDatabase();
   const skip = (page - 1) * limit;
-  const sortOptions = { [sortBy]: order === 'desc' ? -1 : 1, floor: 1, name: 1 }; // Tambahan sort sekunder
+  const sortOptions = { [sortBy]: order === 'desc' ? -1 : 1, floor: 1, name: 1 };
 
+  // Logika find(filters) ini sekarang akan berfungsi karena API handler mengirimkan filter.
   const [data, totalItems] = await Promise.all([
     Location.find(filters).sort(sortOptions).skip(skip).limit(limit).lean(),
     Location.countDocuments(filters)
@@ -42,7 +43,7 @@ export async function getPaginatedLocations({ page = 1, limit = 20, sortBy = 'bu
  * Mengambil daftar semua lokasi dari database.
  * @returns {Promise<Array<object>>} Array berisi semua data lokasi.
  */
-export async function getAllLocations() {
+export async function getAllLocationsForDropdown() {
   await connectToDatabase();
   const locations = await Location.find({}).sort({ building: 1, floor: 1, name: 1 }).lean();
   return locations;
