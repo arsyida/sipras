@@ -30,17 +30,22 @@ import {
   deleteCategory,
 } from "@/lib/services/categoryServices";
 
+// Import hook untuk notifikasi dan konfirmasi
+import { useSnackbar } from "@/components/providers/SnackbarProvider";
+import { useConfirmation } from "@/components/providers/ConfirmationDialogProvider";
+
 /**
  * Halaman utama untuk menampilkan dan mengelola daftar Kategori.
  */
 export default function CategoryPage() {
   const router = useRouter();
+  const { showSnackbar } = useSnackbar();
+  const { showConfirmation } = useConfirmation();
 
   // --- STATE MANAGEMENT ---
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [deleteError, setDeleteError] = useState(null);
   const [filters, setFilters] = useState({ name: "" });
 
   const [pagination, setPagination] = useState({
@@ -55,7 +60,6 @@ export default function CategoryPage() {
     try {
       setLoading(true);
       setError(null);
-      setDeleteError(null);
       const response = await getPaginatedCategories({
         page,
         limit,
@@ -102,22 +106,20 @@ export default function CategoryPage() {
   const handleAddItem = () => router.push("/inventaris/kategori/tambah");
   const handleEdit = (item) => router.push(`/inventaris/kategori/edit/${item._id}`);
 
-  const handleDelete = async (item) => {
-    if (
-      window.confirm(`Apakah Anda yakin ingin menghapus kategori "${item.name}"?`)
-    ) {
-      try {
-        setDeleteError(null);
-        await deleteCategory(item._id);
-        alert("Kategori berhasil dihapus.");
-        fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
-      } catch (err) {
-        setDeleteError(
-          err.message ||
-            "Gagal menghapus kategori. Mungkin kategori masih digunakan."
-        );
+  const handleDelete = (item) => {
+    showConfirmation(
+      "Konfirmasi Hapus",
+      `Apakah Anda yakin ingin menghapus kategori "${item.name}"?`,
+      async () => {
+        try {
+          await deleteCategory(item._id);
+          showSnackbar("Kategori berhasil dihapus.", "success");
+          fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
+        } catch (err) {
+          showSnackbar(err.message || "Gagal menghapus kategori.", "error");
+        }
       }
-    }
+    );
   };
 
   // --- COLUMN & FILTER DEFINITIONS ---
@@ -157,12 +159,6 @@ export default function CategoryPage() {
 
   return (
     <PageLayout title="Manajemen Kategori" actionButtons={actionButtons}>
-      {deleteError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {deleteError}
-        </Alert>
-      )}
-
       <FilterBarComponent
         filters={filters}
         onFilterChange={handleFilterChange}
@@ -212,3 +208,4 @@ export default function CategoryPage() {
     </PageLayout>
   );
 }
+  

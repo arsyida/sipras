@@ -35,7 +35,8 @@ export default function FormComponent({
   onSubmit,
   onCancel,
   isSubmitting = false, // Tambahkan prop isSubmitting
-  title
+  title,
+  children
 }) {
 
   // ... (handler dan renderInputField tetap sama)
@@ -100,16 +101,16 @@ export default function FormComponent({
         return (
           <DatePicker
             label={label}
-            value={value || null}
+            value={value ? new Date(value) : null} // Pastikan value adalah objek Date atau null
             onChange={(newValue) => handleDateChange(name, newValue)}
-            renderInput={(params) => 
-              <TextField 
-                {...params} 
-                fullWidth 
-                required={required}
-                error={hasError}
-                helperText={errorMessage}
-              />}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                required: required,
+                error: hasError,
+                helperText: errorMessage,
+              },
+            }}
           />
         );
     }
@@ -128,6 +129,7 @@ export default function FormComponent({
               {renderInputField(field)}
             </Box>
           ))}
+          {children}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
               <Button variant="text" color="secondary" onClick={onCancel}>

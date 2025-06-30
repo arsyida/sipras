@@ -1,43 +1,40 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
-// Komponen
-import FormComponent from '@/components/common/FormComponent'; // Pastikan path ini benar
-import { Box, CircularProgress, Alert } from '@mui/material';
-
-// Service untuk mengambil data
-import { getAllProductsForDropdown } from '@/lib/services/productServices';
-import { getAllLocations, getAllLocationsForDropdown } from '@/lib/services/locationServices';
-import { createAsset } from '@/lib/services/assetServices'; 
+// Komponen & Service
 import PageLayout from '@/components/layouts/PageLayout';
+import FormComponent from '@/components/common/FormComponent';
+import { Box, CircularProgress, Alert, Typography, Grid, TextField, IconButton, Button } from '@mui/material';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import { getAllProductsForDropdown } from '@/lib/services/productServices';
+import { getAllLocationsForDropdown } from '@/lib/services/locationServices';
+import { createBulkAssetsByRoom } from '@/lib/services/assetServices';
 
 /**
- * Halaman untuk menambahkan data inventaris tetap baru dengan error handling yang baik.
+ * Halaman untuk menambahkan data inventaris tetap baru dengan form dinamis.
  */
-export default function TambahInventarisTetapPage() {
+export default function TambahAsetPage() {
     const router = useRouter();
     
     // --- STATE MANAGEMENT ---
     const [formData, setFormData] = useState({
         product: '',
         location: '',
-        purchase_date: null,
-        serial_number: '',
+        purchase_date: '',
         estimated_price: 0,
-        condition: 'Baik',
-        quantity: 1,
+        condition: 'baik',
     });
     
+    const [attributes, setAttributes] = useState([{ key: '', value: '' }]);
+    const [selectedProduct, setSelectedProduct] = useState(null);
     const [options, setOptions] = useState({ products: [], locations: [] });
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null); // Error untuk data loading awal
-    
-    // State baru untuk proses submit
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [submitError, setSubmitError] = useState(null); // Error spesifik dari API submit
-    const [fieldErrors, setFieldErrors] = useState({}); // Error per field dari Zod
+    const [submitError, setSubmitError] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
 
     // --- PENGAMBILAN DATA DROPDOWN ---
     useEffect(() => {
@@ -48,14 +45,13 @@ export default function TambahInventarisTetapPage() {
                     getAllProductsForDropdown(),
                     getAllLocationsForDropdown(),
                 ]);
-
+                
                 setOptions({
-                    products: productsRes.data.map(p => ({ value: p._id, label: `${p.name} - ${p.brand?.name || ''}` })),
+                    products: productsRes.data || [],
                     locations: locationsRes.data.map(l => ({ value: l._id, label: `Gd. ${l.building} - Lt. ${l.floor} - R. ${l.name}` })),
                 });
             } catch (err) {
-                console.error("Gagal memuat data untuk form:", err);
-                setError("Gagal memuat data pilihan. Silakan coba lagi.");
+                setSubmitError("Gagal memuat data pilihan. Silakan coba lagi.");
             } finally {
                 setLoading(false);
             }
@@ -63,89 +59,159 @@ export default function TambahInventarisTetapPage() {
         fetchDropdownData();
     }, []);
 
-    // --- KONFIGURASI FORM ---
-    const formConfig = [
-        { name: 'product', label: 'Produk', type: 'select', options: options.products, required: true },
-        { name: 'location', label: 'Lokasi', type: 'select', options: options.locations, required: true },
-        { name: 'purchase_date', label: 'Tahun Perolehan', type: 'text', required: true, halfWidth: true },
-        { name: 'quantity', label: 'Jumlah', type: 'number', required: true, halfWidth: true },
-        { name: 'estimated_price', label: 'Estimasi Harga (Rp)', type: 'number', required: true },
-        { 
-          name: 'condition', 
-          label: 'Kondisi', 
-          type: 'select', 
-          required: true,
-          options: [
-              { value: 'Baik', label: 'Baik' },
-              { value: 'Rusak', label: 'Rusak' },
-              { value: 'Kurang Baik', label: 'Kurang Baik' },
-          ]
-        },
-    ];
-
+    // --- LOGIKA DINAMIS ---
     const handleFormChange = (name, value) => {
         setFormData(prev => ({ ...prev, [name]: value }));
-        // Hapus error untuk field yang sedang diubah
         if (fieldErrors[name]) {
-            setFieldErrors(prev => ({...prev, [name]: undefined}));
+            setFieldErrors(prev => ({ ...prev, [name]: undefined }));
+        }
+
+        if (name === 'product') {
+            const productData = options.products.find(p => p._id === value);
+            setSelectedProduct(productData || null);
+            setAttributes([{ key: '', value: '' }]);
         }
     };
 
-    // --- HANDLER UNTUK SUBMIT FORM ---
+    const handleAttributeChange = (index, field, value) => {
+        const newAttributes = [...attributes];
+        newAttributes[index][field] = value;
+        setAttributes(newAttributes);
+    };
+
+    const addAttributeRow = () => setAttributes([...attributes, { key: '', value: '' }]);
+    const removeAttributeRow = (index) => {
+        if (attributes.length > 1) {
+            setAttributes(attributes.filter((_, i) => i !== index));
+        }
+    };
+    
+    // --- KONFIGURASI FORM UTAMA ---
+    const formConfig = useMemo(() => [
+        { 
+            name: 'product', 
+            label: 'Produk', 
+            type: 'select', 
+            options: options.products.map(p => ({ value: p._id, label: `${p.name} - ${p.brand?.name || ''}` })), 
+            required: true 
+        },
+        { name: 'location', label: 'Lokasi', type: 'select', options: options.locations, required: true },
+        { 
+            name: 'quantity', 
+            label: 'Jumlah', 
+            type: 'number', 
+            required: true, 
+            halfWidth: true, 
+            min: 1, 
+            defaultValue: 1,
+            errorMessage: 'Jumlah harus minimal 1.'
+        },
+        { name: 'purchase_date', label: 'Tahun Perolehan', type: 'text', halfWidth: true },
+        { 
+            name: 'condition', 
+            label: 'Kondisi', 
+            type: 'select', 
+            required: true,
+            halfWidth: true,
+            options: [
+                { value: 'Baik', label: 'Baik' },
+                { value: 'Kurang Baik', label: 'Kurang Baik' },
+                { value: 'Rusak', label: 'Rusak' },
+            ]
+        },
+        { name: 'estimated_price', label: 'Estimasi Harga (Rp)', type: 'number' },
+        // PERBAIKAN: Hapus 'attributes' dari sini.
+    ], [options]);
+
+    // --- HANDLER SUBMIT ---
     const handleSubmit = async () => {
         setIsSubmitting(true);
         setSubmitError(null);
         setFieldErrors({});
 
-        try {
-            // Konversi tipe data sebelum mengirim
-            const payload = {
-                ...formData,
-                quantity: parseInt(formData.quantity, 10),
-                estimated_price: parseFloat(formData.estimated_price),
-            };
-
-            await createAsset(payload);
-            
-            alert('Aset berhasil ditambahkan!');
-            router.push('/inventaris-tetap/tambah'); // Ganti dengan path yang sesuai
-
-        } catch (err) {
-            console.error("Gagal menyimpan data:", err);
-            const errorMessage = err.message || "Terjadi kesalahan yang tidak diketahui.";
-            setSubmitError(errorMessage);
-            // Jika ada error validasi dari Zod (backend), tampilkan di field yang relevan
-            if (err.errors) {
-                setFieldErrors(err.errors);
+        const attributesObject = attributes.reduce((acc, attr) => {
+            if (attr.key.trim()) {
+                const numericValue = parseFloat(attr.value);
+                acc[attr.key.trim()] = isNaN(numericValue) ? attr.value : numericValue;
             }
+            return acc;
+        }, {});
+
+        const payload = {
+            ...formData,
+            quantity: parseInt(formData.quantity, 10) || 1,
+            estimated_price: parseFloat(formData.estimated_price) || 0,
+            ...(Object.keys(attributesObject).length > 0 && { attributes: attributesObject }),
+        };
+        console.log("Payload yang akan dikirim:", payload);
+
+        try {
+            await createBulkAssetsByRoom(payload);
+            alert('Aset baru berhasil ditambahkan!');
+            router.push('/inventaris-tetap/tambah'); 
+        } catch (err) {
+            const errorMessage = err.message || "Terjadi kesalahan.";
+            setSubmitError(errorMessage);
+            if (err.errors) setFieldErrors(err.errors);
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    const handleCancel = () => {
-        router.back();
-    };
     
-    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
-    if (error) return <Alert severity="error" sx={{ m: 3 }}>{error}</Alert>;
+    if (loading) return (
+        <PageLayout title="Tambah Aset Baru">
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
+        </PageLayout>
+    );
 
     return (
-        <PageLayout title="Tambah Inventaris Tetap Baru">
-            {submitError && !Object.keys(fieldErrors).length && (
-                <Alert severity="error" sx={{ mb: 2 }}>{submitError}</Alert>
-            )}
-
+        <PageLayout title="Tambah Aset Baru">
+            {submitError && <Alert severity="error" sx={{ mb: 2 }}>{submitError}</Alert>}
+            
             <FormComponent
-                title="Form Tambah Inventaris Tetap"
                 formConfig={formConfig}
                 formData={formData}
-                errors={fieldErrors} // Kirim fieldErrors ke form
+                errors={fieldErrors}
                 onFormChange={handleFormChange}
                 onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                isSubmitting={isSubmitting} // Kirim status submitting ke form
-            />
+                onCancel={() => router.back()}
+                isSubmitting={isSubmitting}
+            >
+                {/* PERBAIKAN: Bagian dinamis sekarang menjadi 'children' dari FormComponent */}
+                {selectedProduct?.measurement_unit === 'Meter' && (
+                    <Box mt={3} p={2} border={1} borderColor="grey.300" borderRadius={1}>
+                        <Typography variant="h6" gutterBottom>Atribut Tambahan</Typography>
+                        {attributes.map((attr, index) => (
+                            <Box display="flex" gap={2} key={index} mb={2}>
+                                <Box flexGrow={1}>
+                                    <TextField 
+                                        label="Nama Atribut (cth: panjang)"
+                                        value={attr.key}
+                                        onChange={(e) => handleAttributeChange(index, 'key', e.target.value)}
+                                        fullWidth
+                                    />
+                                </Box>
+                                <Box flex={1}>
+                                    <TextField 
+                                        label="Nilai Atribut (cth: 5.5)"
+                                        value={attr.value}
+                                        onChange={(e) => handleAttributeChange(index, 'value', e.target.value)}
+                                        fullWidth
+                                    />
+                                </Box>
+                                <Box display="flex" alignItems="center">
+                                    <IconButton onClick={() => removeAttributeRow(index)} disabled={attributes.length <= 1}>
+                                        <RemoveCircleOutlineIcon color='error' />
+                                    </IconButton>
+                                </Box>
+                            </Box>
+                        ))}
+                        <Button startIcon={<AddCircleOutlineIcon />} onClick={addAttributeRow}>
+                            Tambah Atribut
+                        </Button>
+                    </Box>
+                )}
+            </FormComponent>
         </PageLayout>
     );
 }

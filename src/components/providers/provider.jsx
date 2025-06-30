@@ -1,27 +1,38 @@
-// src/app/components/providers.jsx
-"use client"; // <--- PENTING: TANDAI INI SEBAGAI CLIENT COMPONENT
+"use client";
 
-import * as React from 'react';
+import React from 'react';
 import { SessionProvider } from "next-auth/react";
-import theme from '@/theme';
-
-// MUI
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-
-// MUI X
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
+// Impor semua provider kustom Anda di sini
+import { SnackbarProvider } from './SnackbarProvider';
+import { ConfirmationDialogProvider } from './ConfirmationDialogProvider';
+import AppLayout from '@/components/layouts/AppLayout'; // Impor AppLayout
+import theme from '@/theme';
+
+/**
+ * Komponen tunggal untuk membungkus semua context provider aplikasi.
+ */
 export default function Providers({ children }) {
   return (
+    // Urutan dari luar ke dalam
     <SessionProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          {children}
-        </LocalizationProvider>
-      </ThemeProvider>
+      <SnackbarProvider>
+        <ConfirmationDialogProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              {/* AppLayout sekarang berada di dalam semua provider */}
+              <AppLayout>
+                {children}
+              </AppLayout>
+            </LocalizationProvider>
+          </ThemeProvider>
+        </ConfirmationDialogProvider>
+      </SnackbarProvider>
     </SessionProvider>
   );
 }

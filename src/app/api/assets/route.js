@@ -63,33 +63,3 @@ export async function GET(request) {
   }
 }
 
-/**
- * Menangani POST untuk mendaftarkan satu aset baru.
- * @param {Request} request - Objek request masuk dengan body JSON.
- * @returns {Promise<NextResponse>} Respons JSON dengan data aset yang baru dibuat.
- */
-export async function POST(request) {
-  try {
-    const session = await getServerSession(authOptions);
-    const validationResponse = validateAdmin(session);
-    if (!validationResponse.success) {
-      return NextResponse.json({ message: validationResponse.message }, { status: validationResponse.status });
-    }
-
-    const data = await request.json();
-    const newAsset = await registerNewAsset(data);
-
-    return NextResponse.json({ success: true, data: newAsset }, { status: 201 });
-
-  } catch (error) {
-    if (error.isValidationError) {
-      return NextResponse.json({ success: false, message: error.message, errors: error.errors }, { status: 400 });
-    }
-    if (error.isDuplicate) {
-      return NextResponse.json({ success: false, message: error.message }, { status: 409 });
-    }
-    
-    console.error("Error in POST /api/assets:", error);
-    return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
-  }
-}

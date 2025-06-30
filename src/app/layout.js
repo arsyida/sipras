@@ -1,6 +1,5 @@
 import React, { use } from "react";
 import Providers from "@/components/providers/provider";
-import AppLayout from "@/components/layouts/AppLayout";
 
 export const metadata = {
   title: "Sipras",
@@ -15,9 +14,7 @@ export default function RootLayout({ children }) {
     <html lang="id">
       <body>
         <Providers>
-          <AppLayout>
             {children}
-          </AppLayout>
         </Providers>
       </body>
     </html>

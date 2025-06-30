@@ -20,8 +20,7 @@ import {
   TableRow,
 } from "@mui/material";
 
-import { getTotalAsset } from "@/lib/services/assetServices";
-import BreadcrumbsComponent from "@/components/common/BreadcrumbsComponent";
+import { getPaginatedAssets } from "@/lib/services/assetServices";
 
 // --- DATA DUMMY ---
 // Di dunia nyata, ini akan datang dari API call
@@ -98,9 +97,18 @@ export default function DashboardPage() {
   const [totalAssets, setTotalAssets] = useState(0);
 
   useEffect(() => {
-    getTotalAsset().then((totalAssets) => {
-      setTotalAssets(totalAssets);
-    });
+    const fetchAllData = async () => {
+          try {
+    
+            const assetsRes = await getPaginatedAssets({ page: 1, limit: 10000 });
+            setTotalAssets(assetsRes.totalItems || 0);
+    
+          } catch (err) {
+            console.error("Gagal memuat data:", err);
+            setError("Gagal memuat data untuk laporan. Silakan coba lagi.");
+          }
+        };
+        fetchAllData();
   }, []);
 
   if (!data) {

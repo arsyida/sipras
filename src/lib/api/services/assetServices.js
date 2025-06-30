@@ -35,7 +35,8 @@ const assetBulkSchema = z.object({
   purchase_date: z.coerce.date().optional(),
   quantity: z.number().int().min(1, "Jumlah harus minimal 1."),
   estimated_price: z.number().min(0, "Harga harus angka positif.").optional(),
-  condition: z.enum(['baik', 'rusak ringan', 'rusak berat', 'perbaikan']).default('baik'),
+  condition: z.enum(['Baik', 'Rusak', 'Kurang Baik']).default('baik'),
+  attributes: z.record(z.any()).optional(),
 });
 
 // Skema untuk memperbarui aset.
@@ -61,7 +62,7 @@ export async function getPaginatedAssets({ page = 1, limit = 10, filters = {} })
         path: 'product',
         model: Product,
         // PERBAIKAN: Menambahkan 'category' dan 'brand' ke select agar nested populate bisa bekerja
-        select: 'name product_code category brand', 
+        select: 'name product_code category  measurement_unit', 
         populate: [
             { path: 'category', model: Category, select: 'name' },
             { path: 'brand', model: Brand, select: 'name' }
@@ -80,43 +81,6 @@ export async function getPaginatedAssets({ page = 1, limit = 10, filters = {} })
   ]);
 
   return { data, totalItems };
-}
-
-/**
- * Mendaftarkan satu aset baru.
- * @param {object} data - Data mentah untuk aset baru.
- * @returns {Promise<object>} Dokumen aset yang baru dibuat.
- */
-export async function registerNewAsset(data) {
-  const validation = assetRegistrationSchema.safeParse(data);
-  if (!validation.success) {
-    const validationError = new Error('Input tidak valid.');
-    validationError.isValidationError = true;
-    validationError.errors = validation.error.flatten().fieldErrors;
-    throw validationError;
-  }
-  
-  const { product: productId, location: locationId, ...otherData } = validation.data;
-
-  const serial_number = await generateSerialNumber(productId, locationId);
-
-  try {
-    const newAsset = await Asset.create({
-      ...otherData,
-      product: productId,
-      location: locationId,
-      serial_number: serial_number,
-    });
-    return newAsset;
-  } catch (error) {
-    if (error.code === 11000) {
-      const duplicatedField = Object.keys(error.keyValue)[0];
-      const duplicateError = new Error(`Gagal membuat aset. ${duplicatedField} '${error.keyValue[duplicatedField]}' sudah ada.`);
-      duplicateError.isDuplicate = true;
-      throw duplicateError;
-    }
-    throw error;
-  }
 }
 
 /**

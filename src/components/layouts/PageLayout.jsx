@@ -22,6 +22,7 @@ export default function PageLayout({ title, actionButtons, children }) {
       <Divider />
       
       {/* Konten utama halaman */}
+      
       {children}
     </Box>
   );

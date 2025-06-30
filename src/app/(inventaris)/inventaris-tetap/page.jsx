@@ -9,7 +9,15 @@ import FilterBarComponent from "@/components/common/FilterBarComponent";
 import TableComponent from "@/components/common/TableComponent";
 
 // MUI Components
-import { Tooltip,IconButton,Box, CircularProgress, Alert, Button, Divider } from "@mui/material";
+import {
+  Tooltip,
+  IconButton,
+  Box,
+  CircularProgress,
+  Alert,
+  Button,
+  Divider,
+} from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
 
 // Service untuk mengambil data
@@ -120,7 +128,7 @@ export default function InventarisAgregatPage() {
             : "-",
           harga: asset.estimated_price || 0,
           jumlah: 1, // Mulai hitungan
-          satuan: asset.product.measurement_unit || "Unit",
+          satuan: asset.product.measurement_unit,
           kondisi: asset.condition,
         };
       }
@@ -135,6 +143,17 @@ export default function InventarisAgregatPage() {
   };
 
   const handleGenerateReport = () => console.log("Membuat laporan agregat...");
+    const handleAddItem = () => router.push("/inventaris-tetap/tambah");
+  const handleShowDetail = (row) => {
+    // Membuat query string berdasarkan ID produk dan lokasi dari baris yang diklik
+    const queryParams = new URLSearchParams({
+      product: row.id.split("-")[0], // Ambil ID produk dari key agregasi
+      location: row.id.split("-")[1], // Ambil ID lokasi dari key agregasi
+    }).toString();
+
+    // Arahkan ke halaman daftar aset (bukan agregat) dengan filter yang sudah diterapkan
+    router.push(`/inventaris-tetap/detail?${queryParams}`);
+  };
 
   // --- COLUMN & FILTER DEFINITIONS ---
   const columns = useMemo(
@@ -191,9 +210,14 @@ export default function InventarisAgregatPage() {
   );
 
   const actionButtons = (
-    <Button variant="outlined" onClick={handleGenerateReport}>
-      Cetak Laporan
-    </Button>
+    <Box display="flex" gap={2}>
+      <Button variant="outlined" onClick={handleGenerateReport}>
+        Laporan
+      </Button>
+      <Button variant="contained" onClick={handleAddItem}>
+        + Tambahkan Aset
+      </Button>
+    </Box>
   );
 
   return (
@@ -219,7 +243,7 @@ export default function InventarisAgregatPage() {
           renderActionCell={(row) => (
             <Box>
               <Tooltip title="Info">
-                <IconButton onClick={() => handleShowDetail()}>
+                <IconButton onClick={() => handleShowDetail(row)}>
                   <InfoIcon color="info" />
                 </IconButton>
               </Tooltip>

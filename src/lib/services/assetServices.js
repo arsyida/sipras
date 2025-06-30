@@ -56,7 +56,7 @@ export async function createAsset(assetData) {
  */
 export async function createBulkAssetsByRoom(bulkData) {
     try {
-        const response = await axios.post('/api/assets/bulk-by-room', bulkData);
+        const response = await axios.post('/api/assets/bulk', bulkData);
         return response.data;
     } catch (error) {
         console.error("Error creating bulk assets by room:", error.response?.data || error.message);

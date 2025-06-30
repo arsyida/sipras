@@ -79,7 +79,7 @@ export async function getAllProductsForDropdown() {
   await connectToDatabase();
   // Mengambil semua produk dan melakukan populate pada field 'brand'
   const products = await Product.find({})
-    .select('name brand') // Pastikan field 'brand' ikut diambil untuk bisa di-populate
+    .select('name brand measurement_unit') // Pastikan field 'brand' ikut diambil untuk bisa di-populate
     .populate({
       path: 'brand',      // Nama field yang akan di-populate
       select: 'name'    // Hanya ambil field 'name' dari dokumen brand
