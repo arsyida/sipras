@@ -9,9 +9,9 @@ import { Box, CircularProgress, Alert } from '@mui/material';
 
 // Service untuk mengambil data
 import { getAllProductsForDropdown } from '@/lib/services/productServices';
-import { getAllLocations } from '@/lib/services/locationServices';
+import { getAllLocations, getAllLocationsForDropdown } from '@/lib/services/locationServices';
 import { createAsset } from '@/lib/services/assetServices'; 
-import PageLayout from '@/components/common/PageLayout';
+import PageLayout from '@/components/layouts/PageLayout';
 
 /**
  * Halaman untuk menambahkan data inventaris tetap baru dengan error handling yang baik.
@@ -46,7 +46,7 @@ export default function TambahInventarisTetapPage() {
                 setLoading(true);
                 const [productsRes, locationsRes] = await Promise.all([
                     getAllProductsForDropdown(),
-                    getAllLocations(),
+                    getAllLocationsForDropdown(),
                 ]);
 
                 setOptions({
@@ -81,6 +81,8 @@ export default function TambahInventarisTetapPage() {
               { value: 'Kurang Baik', label: 'Kurang Baik' },
           ]
         },
+        
+        { name: 'attributes', label: 'Panjang (optional)', type: 'text', optional: true },
     ];
 
     const handleFormChange = (name, value) => {

@@ -77,7 +77,16 @@ export async function getPaginatedProducts({ page = 1, limit = 10, sortBy = 'nam
  */
 export async function getAllProductsForDropdown() {
   await connectToDatabase();
-  const products = await Product.find({}).select('name').sort({ name: 1 }).lean();
+  // Mengambil semua produk dan melakukan populate pada field 'brand'
+  const products = await Product.find({})
+    .select('name brand') // Pastikan field 'brand' ikut diambil untuk bisa di-populate
+    .populate({
+      path: 'brand',      // Nama field yang akan di-populate
+      select: 'name'    // Hanya ambil field 'name' dari dokumen brand
+    })
+    .sort({ name: 1 })
+    .lean();
+    
   return products;
 }
 
