@@ -22,10 +22,13 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
+
 // Service untuk mengambil data
 import { getPaginatedAssets, deleteAsset } from "@/lib/services/assetServices";
 import { getAllLocationsForDropdown } from "@/lib/services/locationServices";
 import { getAllProductsForDropdown } from "@/lib/services/productServices";
+import { useSnackbar } from "@/components/providers/SnackbarProvider";
+import { useConfirmation } from "@/components/providers/ConfirmationDialogProvider";
 
 /**
  * Halaman utama untuk menampilkan dan mengelola daftar Aset Tetap secara individual.
@@ -160,7 +163,7 @@ export default function DetailAssetPage() {
           `Apakah Anda yakin ingin menghapus aset dengan nomer seri "${item.serial_number}"?`,
           async () => {
             try {
-              await deleteCategory(item._id);
+              await deleteAsset(item._id);
               showSnackbar("Aset berhasil dihapus.", "success");
               fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
             } catch (err) {

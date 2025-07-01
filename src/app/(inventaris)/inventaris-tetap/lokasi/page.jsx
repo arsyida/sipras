@@ -147,7 +147,7 @@ export default function InventarisLokasiPage() {
           `Apakah Anda yakin ingin menghapus kategori "${item.name}"?`,
           async () => {
             try {
-              await deleteCategory(item._id);
+              await deleteLocation(item._id);
               showSnackbar("Lokasi berhasil dihapus.", "success");
               fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
             } catch (err) {

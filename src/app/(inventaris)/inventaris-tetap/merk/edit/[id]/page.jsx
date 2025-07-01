@@ -10,11 +10,13 @@ import { Box, CircularProgress, Alert } from '@mui/material';
 
 // Asumsi ada service untuk mengambil dan memperbarui data
 import { getBrandById, updateBrand } from '@/lib/services/brandServices'; 
+import { useSnackbar } from '@/components/providers/SnackbarProvider';
 
 /**
  * Halaman untuk mengedit data merk yang sudah ada.
  */
 export default function EditBrandPage() {
+    const {showSnackbar} = useSnackbar();
     const router = useRouter();
     const params = useParams();
     const brandId = params.id; // Mengambil ID dari URL
@@ -77,11 +79,11 @@ export default function EditBrandPage() {
 
         try {
             await updateBrand(brandId, formData);
-            alert('Merk berhasil diperbarui!');
+            showSnackbar('Merk berhasil diperbarui!',"success");
             router.push('/inventaris-tetap/merk'); // Kembali ke halaman daftar merk
 
         } catch (err) {
-            console.error("Gagal memperbarui data:", err);
+            showSnackbar(err || "Gagal memperbarui data:", "error");
             const errorMessage = err.message || "Terjadi kesalahan yang tidak diketahui.";
             setSubmitError(errorMessage);
             if (err.errors) {
