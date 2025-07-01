@@ -72,7 +72,7 @@ export default function EditAssetPage() {
           purchase_date: assetData.purchase_date
             ? new Date(assetData.purchase_date).toISOString().split("T")[0]
             : "",
-          estimated_price: assetData.estimated_price || 0,
+          estimated_price: parseFloat(assetData.estimated_price,10) || 0,
           attributes: assetData.attributes
             ? JSON.stringify(assetData.attributes, null, 2)
             : "",
@@ -199,6 +199,7 @@ export default function EditAssetPage() {
     const dataToSubmit = {
       ...formData,
       attributes: parsedAttributes,
+      estimated_price: parseFloat(formData.estimated_price,10)
     };
     // Hapus field yang tidak seharusnya diupdate
     delete dataToSubmit.serial_number;
@@ -207,7 +208,7 @@ export default function EditAssetPage() {
     try {
       await updateAsset(assetId, dataToSubmit);
       alert("Aset berhasil diperbarui!");
-      router.push("/inventaris/aset");
+      router.push("/inventaris-tetap/detail");
     } catch (err) {
       console.error("Gagal memperbarui data:", err);
       const errorMessage =

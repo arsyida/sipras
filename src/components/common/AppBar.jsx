@@ -31,12 +31,11 @@ import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import ViewInArIcon from "@mui/icons-material/ViewInAr";
 import AllInboxIcon from "@mui/icons-material/AllInbox";
-import DownloadIcon from "@mui/icons-material/Download";
-import UploadIcon from "@mui/icons-material/Upload";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import CategoryIcon from "@mui/icons-material/Category";
 import ViewStreamIcon from "@mui/icons-material/ViewStream";
 import BedIcon from "@mui/icons-material/Bed";
+import HistoryIcon from '@mui/icons-material/History';
 
 const drawerWidth = 260;
 
@@ -112,54 +111,54 @@ const menuItems = [
     href: "/dashboard", // Tambahkan href untuk navigasi
   },
   {
-    text: "Inventaris",
+    text: "Inv. Tetap",
     icon: <Inventory2Icon fontSize="small" />,
     children: [
       {
-        text: "Tetap",
+        text: "Barang",
         icon: <ViewInArIcon fontSize="small" />,
         href: "/inventaris-tetap",
       },
       {
-        text: "Sementara",
-        icon: <AllInboxIcon fontSize="small" />,
-        href: "/inventaris-tidak-tetap",
-      },
-      {
         text: "Lokasi",
         icon: <LocationOnIcon fontSize="small" />,
-        href: "/inventaris/lokasi",
+        href: "/inventaris-tetap/lokasi",
       },
       {
         text: "Produk",
         icon: <ViewStreamIcon fontSize="small" />,
-        href: "/inventaris/produk",
+        href: "/inventaris-tetap/produk",
       },
       {
         text: "Kategori",
         icon: <CategoryIcon fontSize="small" />,
-        href: "/inventaris/kategori",
+        href: "/inventaris-tetap/kategori",
       },
       {
         text: "Merk",
         icon: <BedIcon fontSize="small" />,
-        href: "/inventaris/merk",
+        href: "/inventaris-tetap/merk",
       },
     ],
   },
   {
-    text: "Mutasi",
-    icon: <SwapHorizIcon fontSize="medium" />,
+    text: "Inv. Sementara",
+    icon: <AllInboxIcon fontSize="medium" />,
     children: [
       {
-        text: "Masuk",
-        icon: <DownloadIcon fontSize="small" />,
-        href: "/mutasi-permintaan",
+        text: "Barang",
+        icon: <ViewInArIcon fontSize="small" />,
+        href: "/inventaris-sementara",
       },
-      {
-        text: "Keluar",
-        icon: <UploadIcon fontSize="small" />,
-        href: "/mutasi-riwayat",
+            {
+        text: "Kategori",
+        icon: <CategoryIcon fontSize="small" />,
+        href: "/inventaris-sementara/kategori",
+      },
+            {
+        text: "Produk",
+        icon: <ViewStreamIcon fontSize="small" />,
+        href: "/inventaris-sementara/produk",
       },
     ],
   },

@@ -6,12 +6,15 @@ import {
   Grid,
   TextField,
   FormControl,
+  Checkbox,
+  FormControlLabel,
   InputLabel,
   Select,
   MenuItem,
   InputAdornment,
   Typography,
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers';
 import SearchIcon from '@mui/icons-material/Search';
 
 /**
@@ -28,6 +31,14 @@ export default function FilterBarComponent({
 
   const handleInputChange = (event) => {
     onFilterChange(event.target.name, event.target.value);
+  };
+  const handleCheckboxChange = (event) => {
+    onFilterChange(event.target.name, event.target.checked);
+  };
+
+  // PERBAIKAN: Handler baru khusus untuk DatePicker
+  const handleDateChange = (name, newValue) => {
+    onFilterChange(name, newValue);
   };
 
   const renderFilterField = (field) => {
@@ -54,7 +65,28 @@ export default function FilterBarComponent({
             </Select>
           </FormControl>
         );
-      
+        case 'checkbox':
+        return (
+            <FormControlLabel
+                control={
+                    <Checkbox
+                        name={name}
+                        checked={!!value}
+                        onChange={handleCheckboxChange}
+                    />
+                }
+                label={label}
+            />
+        );
+      case 'date':
+        return (
+            <DatePicker
+                label={label}
+                value={value || null} // DatePicker mengharapkan null, bukan string kosong
+                onChange={(newValue) => handleDateChange(name, newValue)}
+                renderInput={(params) => <TextField {...params} size="medium" fullWidth />}
+            />
+        );
       case 'text':
       default:
         return (

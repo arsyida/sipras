@@ -1,11 +1,12 @@
-// src/app/dashboard/page.jsx
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // components
 import SummaryCard from "@/components/dashboard/SummaryCard";
 import LowStockList from "@/components/dashboard/LowStockList";
+import PageLayout from "@/components/layouts/PageLayout"; // Menggunakan PageLayout
 
 // material-ui
 import {
@@ -18,58 +19,16 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  CircularProgress,
+  Alert,
+  Chip
 } from "@mui/material";
 
+// Services
 import { getPaginatedAssets } from "@/lib/services/assetServices";
+import { getPaginatedConsumableStock, getPaginatedConsumableLogs } from "@/lib/services/consumableServices";
 
-// --- DATA DUMMY ---
-// Di dunia nyata, ini akan datang dari API call
-const mockData = {
-  summary: {
-    barangTetap: 700,
-    stokSementara: 7567,
-  },
-  lowStock: [
-    { name: "Tinta", quantity: 140 },
-    { name: "Spion", quantity: 120 },
-    { name: "Taplak", quantity: 160 },
-    { name: "Mouse", quantity: 130 },
-    { name: "Kapur", quantity: 170 },
-  ],
-  barangMasuk: [
-    {
-      no: 1,
-      tanggal: "30/06/2022",
-      nama: "Sarpras",
-      jabatan: "TU",
-      barangMasuk: "Meja",
-      jumlah: 70,
-      keterangan: "-",
-    },
-    {
-      no: 2,
-      tanggal: "30/05/2022",
-      nama: "Sarpras",
-      jabatan: "TU",
-      barangMasuk: "Meja",
-      jumlah: 70,
-      keterangan: "-",
-    },
-  ],
-  barangKeluar: [
-    {
-      no: 1,
-      tanggal: "30/06/2022",
-      nama: "Ayu",
-      jabatan: "TU",
-      barangKeluar: "Meja",
-      jumlah: 5,
-      keterangan: "-",
-      keperluan: "Bendahara",
-    },
-  ],
-};
-
+// Komponen Tabel Transaksi yang lebih generik
 const TransactionTable = ({ title, headers, data, renderRow }) => (
   <Box>
     <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: 500 }}>
@@ -92,105 +51,116 @@ const TransactionTable = ({ title, headers, data, renderRow }) => (
 
 // --- KOMPONEN UTAMA HALAMAN DASHBOARD ---
 export default function DashboardPage() {
-  // Di aplikasi nyata, Anda akan menggunakan state untuk data dari API
-  const [data, setData] = useState(mockData);
-  const [totalAssets, setTotalAssets] = useState(0);
+  const router = useRouter();
 
+  // --- STATE MANAGEMENT ---
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [summary, setSummary] = useState({
+    totalAssets: 0,
+    totalConsumableStock: 0,
+  });
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const [recentLogs, setRecentLogs] = useState([]);
+
+  // --- PENGAMBILAN DATA ---
   useEffect(() => {
-    const fetchAllData = async () => {
-          try {
-    
-            const assetsRes = await getPaginatedAssets({ page: 1, limit: 10000 });
-            setTotalAssets(assetsRes.totalItems || 0);
-    
-          } catch (err) {
-            console.error("Gagal memuat data:", err);
-            setError("Gagal memuat data untuk laporan. Silakan coba lagi.");
-          }
-        };
-        fetchAllData();
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Ambil semua data yang diperlukan secara paralel
+        const [assetsRes, lowStockRes, logsRes] = await Promise.all([
+          getPaginatedAssets({ page: 1, limit: 1 }), // Cukup ambil totalnya
+          getPaginatedConsumableStock({ page: 1, limit: 10, filters: { low_stock: true } }),
+          getPaginatedConsumableLogs({ page: 1, limit: 5 }) // Ambil 5 transaksi terakhir
+        ]);
+
+        // Hitung total stok barang habis pakai
+        const allStockRes = await getPaginatedConsumableStock({ page: 1, limit: 10000 });
+        const totalConsumable = allStockRes.data.reduce((acc, item) => acc + item.quantity, 0);
+
+        // Set state dengan data dari API
+        setSummary({
+            totalAssets: assetsRes.pagination.totalItems || 0,
+            totalConsumableStock: totalConsumable || 0,
+        });
+        setLowStockItems(lowStockRes.data || []);
+        setRecentLogs(logsRes.data || []);
+
+      } catch (err) {
+        console.error("Gagal memuat data dashboard:", err);
+        setError("Gagal memuat data dashboard. Silakan coba lagi nanti.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
   }, []);
 
-  if (!data) {
-    return <Typography>Loading...</Typography>; // Atau tampilkan skeleton loader
+  if (loading) {
+    return (
+        <PageLayout title="Dashboard">
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
+        </PageLayout>
+    );
+  }
+  if (error) {
+    return (
+        <PageLayout title="Dashboard">
+            <Alert severity="error">{error}</Alert>
+        </PageLayout>
+    );
   }
 
   return (
-    <Box display="flex" flexDirection="column" gap={4} p={2}>
-      <Box>
-        <Typography variant="h3" sx={{ mb: 2 }}>
-          Overview
-        </Typography>
-        <Box display="flex" flexDirection="row" width={"100%"} gap={4}>
-          <SummaryCard
-            title="Total Inventaris Tetap"
-            value={totalAssets}
-            unit="Barang"
-          />
-          <SummaryCard
-            title="Total Stok Inventaris Sementara"
-            value={data.summary.stokSementara}
-            unit="Barang"
-          />
-        </Box>
+    <PageLayout title="Dashboard Overview">
+      <Box display="flex" flexDirection="row" width={"100%"} gap={4}>
+        <SummaryCard
+          title="Total Inventaris Tetap"
+          value={summary.totalAssets}
+          unit="Aset"
+          onClick={() => router.push('/inventaris/aset')}
+        />
+        <SummaryCard
+          title="Total Stok Habis Pakai"
+          value={summary.totalConsumableStock}
+          unit="Item"
+          onClick={() => router.push('/inventaris-habis-pakai/stok')}
+        />
       </Box>
-      <LowStockList items={data.lowStock} />
+
+      <LowStockList items={lowStockItems} />
+
       <TransactionTable
-        title="Barang Masuk"
+        title="Aktivitas Terbaru Barang Habis Pakai"
         headers={[
-          "No",
           "Tanggal",
-          "Nama",
-          "Jabatan",
-          "Barang Masuk",
+          "Nama Barang",
+          "Jenis",
           "Jumlah",
-          "Keterangan",
+          "Dicatat Oleh",
+          "Pengambil/Penambah",
         ]}
-        data={data.barangMasuk}
-        renderRow={(row) => (
-          <TableRow
-            key={row.no}
-            sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-          >
-            <TableCell>{row.no}</TableCell>
-            <TableCell>{row.tanggal}</TableCell>
-            <TableCell>{row.nama}</TableCell>
-            <TableCell>{row.jabatan}</TableCell>
-            <TableCell>{row.barangMasuk}</TableCell>
-            <TableCell>{row.jumlah}</TableCell>
-            <TableCell>{row.keterangan}</TableCell>
+        data={recentLogs}
+        renderRow={(row, index) => (
+          <TableRow key={row._id || index}>
+            <TableCell>{new Date(row.createdAt).toLocaleString('id-ID')}</TableCell>
+            <TableCell>{row.stock_item?.product?.name || 'N/A'}</TableCell>
+            <TableCell>
+                <Chip 
+                    label={row.transaction_type === 'penambahan' ? 'Masuk' : 'Keluar'}
+                    color={row.transaction_type === 'penambahan' ? 'success' : 'warning'}
+                    size="small"
+                />
+            </TableCell>
+            <TableCell>{`${row.quantity_changed} ${row.stock_item?.unit || ''}`}</TableCell>
+            <TableCell>{row.user?.name}</TableCell>
+            <TableCell>{row.person_name}</TableCell>
           </TableRow>
         )}
       />
-      <TransactionTable
-        title="Barang Keluar"
-        headers={[
-          "No",
-          "Tanggal",
-          "Nama",
-          "Jabatan",
-          "Barang Keluar",
-          "Jumlah",
-          "Keterangan",
-          "Keperluan",
-        ]}
-        data={data.barangKeluar}
-        renderRow={(row) => (
-          <TableRow
-            key={row.no}
-            sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-          >
-            <TableCell>{row.no}</TableCell>
-            <TableCell>{row.tanggal}</TableCell>
-            <TableCell>{row.nama}</TableCell>
-            <TableCell>{row.jabatan}</TableCell>
-            <TableCell>{row.barangKeluar}</TableCell>
-            <TableCell>{row.jumlah}</TableCell>
-            <TableCell>{row.keterangan}</TableCell>
-            <TableCell>{row.keperluan}</TableCell>
-          </TableRow>
-        )}
-      />
-    </Box>
+    </PageLayout>
   );
 }

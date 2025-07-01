@@ -1,3 +1,4 @@
+// file inventaris-tetap/page.jsx
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
