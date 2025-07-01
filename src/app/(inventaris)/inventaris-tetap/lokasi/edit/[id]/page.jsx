@@ -10,11 +10,14 @@ import { Box, CircularProgress, Alert } from '@mui/material';
 // Service untuk mengambil dan memperbarui data
 import { getLocationById, updateLocation } from '@/lib/services/locationServices'; 
 import PageLayout from '@/components/layouts/PageLayout';
+import { useSnackbar } from '@/components/providers/SnackbarProvider';
+import { useConfirmation } from '@/components/providers/ConfirmationDialogProvider';
 
 /**
  * Halaman untuk mengedit data lokasi yang sudah ada.
  */
 export default function EditLocationPage() {
+    const {showSnackBar} = useSnackbar();
     const router = useRouter();
     const params = useParams();
     const locationId = params.id; // Mengambil ID dari URL
@@ -88,11 +91,11 @@ export default function EditLocationPage() {
             // Memanggil service updateLocation dengan ID dan data form
             await updateLocation(locationId, formData);
             
-            alert('Lokasi berhasil diperbarui!');
+            showSnackBar('Lokasi berhasil diperbarui!', "success");
             router.push('/inventaris-tetap/lokasi'); // Kembali ke halaman daftar lokasi
 
         } catch (err) {
-            console.error("Gagal memperbarui data:", err);
+            showSnackBarr(err.message || "Gagal memperbarui data:", "error");
             const errorMessage = err.message || "Terjadi kesalahan yang tidak diketahui.";
             setSubmitError(errorMessage);
             // Jika ada error validasi dari Zod, tampilkan di field yang relevan

@@ -30,12 +30,16 @@ import {
   deleteLocation,
   getAllLocationsForDropdown,
 } from "@/lib/services/locationServices";
+import { useSnackbar } from "@/components/providers/SnackbarProvider";
+import { useConfirmation } from "@/components/providers/ConfirmationDialogProvider";
 
 /**
  * Halaman utama untuk menampilkan dan mengelola daftar lokasi inventaris.
  * Strukturnya disesuaikan agar sama dengan ProductPage (tanpa custom hook).
  */
 export default function InventarisLokasiPage() {
+  const {showSnackbar} = useSnackbar();
+  const {showConfirmation} = useConfirmation;
   const router = useRouter();
 
   // --- STATE MANAGEMENT ---
@@ -138,17 +142,19 @@ export default function InventarisLokasiPage() {
   const handleEdit = (item) => router.push(`/inventaris-tetap/lokasi/edit/${item._id}`);
 
   const handleDelete = async (item) => {
-    if (window.confirm(`Apakah Anda yakin ingin menghapus lokasi "${item.name}"?`)) {
-      try {
-        setDeleteError(null);
-        await deleteLocation(item._id);
-        alert("Lokasi berhasil dihapus.");
-        // Panggil kembali fetchData untuk me-refresh tabel setelah hapus.
-        fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
-      } catch (err) {
-        setDeleteError(err.message || "Gagal menghapus lokasi.");
-      }
-    }
+    showConfirmation(
+          "Konfirmasi Hapus",
+          `Apakah Anda yakin ingin menghapus kategori "${item.name}"?`,
+          async () => {
+            try {
+              await deleteCategory(item._id);
+              showSnackbar("Lokasi berhasil dihapus.", "success");
+              fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
+            } catch (err) {
+              showSnackbar(err.message || "Gagal menghapus lokasi.", "error");
+            }
+          }
+        );
   };
 
   // --- COLUMN & FILTER DEFINITIONS ---

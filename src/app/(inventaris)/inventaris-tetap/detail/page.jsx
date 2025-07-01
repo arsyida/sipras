@@ -32,6 +32,9 @@ import { getAllProductsForDropdown } from "@/lib/services/productServices";
  * Halaman ini mendukung pagination, sorting, dan filtering.
  */
 export default function DetailAssetPage() {
+    const { showSnackbar } = useSnackbar();
+    const { showConfirmation } = useConfirmation();
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -152,19 +155,19 @@ export default function DetailAssetPage() {
   const handleEdit = (item) => router.push(`/inventaris-tetap/edit/${item._id}`);
 
   const handleDelete = async (item) => {
-    if (
-      window.confirm(
-        `Yakin ingin menghapus aset dengan nomor seri "${item.serial_number}"?`
-      )
-    ) {
-      try {
-        await deleteAsset(item._id);
-        alert("Aset berhasil dihapus.");
-        fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
-      } catch (err) {
-        setDeleteError(err.message || "Gagal menghapus aset.");
-      }
-    }
+    showConfirmation(
+          "Konfirmasi Hapus",
+          `Apakah Anda yakin ingin menghapus aset dengan nomer seri "${item.serial_number}"?`,
+          async () => {
+            try {
+              await deleteCategory(item._id);
+              showSnackbar("Aset berhasil dihapus.", "success");
+              fetchData(pagination.currentPage, pagination.rowsPerPage, filters);
+            } catch (err) {
+              showSnackbar(err.message || "Gagal menghapus aset.", "error");
+            }
+          }
+        );
   };
 
   // --- COLUMN & FILTER DEFINITIONS ---

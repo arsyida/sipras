@@ -6,8 +6,10 @@ import PageLayout from '@/components/layouts/PageLayout';
 import FormComponent from '@/components/common/FormComponent';
 import { Alert, Box, CircularProgress } from '@mui/material';
 import { getCategoryById, updateCategory } from '@/lib/services/categoryServices'; 
+import { useSnackbar } from '@/components/providers/SnackbarProvider';
 
 export default function EditKategoriPage() {
+      const { showSnackbar } = useSnackbar;
     const router = useRouter();
     const params = useParams();
     const categoryId = params.id;
@@ -53,9 +55,10 @@ export default function EditKategoriPage() {
         setFieldErrors({});
         try {
             await updateCategory(categoryId, formData);
-            alert('Kategori berhasil diperbarui!');
+            showSnackbar('Kategori berhasil diperbarui!', "success");
             router.push('/inventaris-tetap/kategori');
         } catch (err) {
+            showSnackbar(err.message || 'Terjadi Kesalahan', "error")
             setSubmitError(err.message || "Terjadi kesalahan.");
             if (err.errors) setFieldErrors(err.errors);
         } finally {

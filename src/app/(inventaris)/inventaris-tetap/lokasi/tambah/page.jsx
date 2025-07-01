@@ -10,11 +10,13 @@ import { Alert } from "@mui/material";
 // Service untuk membuat data baru
 import { createLocation } from "@/lib/services/locationServices";
 import PageLayout from "@/components/layouts/PageLayout";
+import { useSnackbar } from "@/components/providers/SnackbarProvider";
 
 /**
  * Halaman untuk menambahkan data lokasi baru.
  */
 export default function TambahLokasiPage() {
+  const {showSnackbar} = useSnackbar();
   const router = useRouter();
 
   // --- STATE MANAGEMENT ---
@@ -73,10 +75,10 @@ export default function TambahLokasiPage() {
       // Memanggil service createLocation dengan data dari form
       await createLocation(formData);
 
-      alert("Lokasi baru berhasil ditambahkan!");
+      showSnackbar("Lokasi baru berhasil ditambahkan!", "success");
       router.push("/inventaris-tetap/lokasi"); // Kembali ke halaman daftar lokasi
     } catch (err) {
-      console.error("Gagal menyimpan data:", err);
+      showSnackbar(err.message || "Gagal menyimpan data:", "error");
       const errorMessage =
         err.message || "Terjadi kesalahan yang tidak diketahui.";
       setSubmitError(errorMessage);

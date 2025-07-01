@@ -14,11 +14,14 @@ import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutlineOutl
 import { getAssetById, updateAsset } from "@/lib/services/assetServices";
 import { getAllProductsForDropdown } from "@/lib/services/productServices";
 import { getAllLocationsForDropdown } from "@/lib/services/locationServices";
+import { useSnackbar } from "@/components/providers/SnackbarProvider";
 
 /**
  * Halaman untuk mengedit data aset yang sudah ada.
  */
 export default function EditAssetPage() {
+
+  const {showSnackBar} = useSnackbar()
   const router = useRouter();
   const params = useParams();
   const assetId = params.id;
@@ -207,10 +210,10 @@ export default function EditAssetPage() {
 
     try {
       await updateAsset(assetId, dataToSubmit);
-      alert("Aset berhasil diperbarui!");
+      showSnackBar("Aset berhasil diperbarui!", "success");
       router.push("/inventaris-tetap/detail");
     } catch (err) {
-      console.error("Gagal memperbarui data:", err);
+      showSnackBar(err.message || "Gagal memperbarui data:", "error");
       const errorMessage =
         err.message || "Terjadi kesalahan yang tidak diketahui.";
       setSubmitError(errorMessage);

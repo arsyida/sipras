@@ -21,8 +21,6 @@ import {
 } from "@mui/material";
 
 // MUI Icons
-import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import RemoveShoppingCartIcon from "@mui/icons-material/RemoveShoppingCart";
 import HistoryIcon from "@mui/icons-material/History";
 import DownloadIcon from "@mui/icons-material/Download";
 import UploadIcon from "@mui/icons-material/Upload";

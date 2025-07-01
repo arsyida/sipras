@@ -12,11 +12,15 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { getAllProductsForDropdown } from '@/lib/services/productServices';
 import { getAllLocationsForDropdown } from '@/lib/services/locationServices';
 import { createBulkAssetsByRoom } from '@/lib/services/assetServices';
+import { useSnackbar } from '@/components/providers/SnackbarProvider';
+import { useConfirmation } from '@/components/providers/ConfirmationDialogProvider';
 
 /**
  * Halaman untuk menambahkan data inventaris tetap baru dengan form dinamis.
  */
 export default function TambahAsetPage() {
+    const {showSnackbar} = useSnackbar();
+    const {showConfirmation} = useConfirmation();
     const router = useRouter();
     
     // --- STATE MANAGEMENT ---
@@ -147,7 +151,7 @@ export default function TambahAsetPage() {
 
         try {
             await createBulkAssetsByRoom(payload);
-            alert('Aset baru berhasil ditambahkan!');
+            showSnackbar('Aset baru berhasil ditambahkan!',"success");
             router.push('/inventaris-tetap/tambah'); 
         } catch (err) {
             const errorMessage = err.message || "Terjadi kesalahan.";
