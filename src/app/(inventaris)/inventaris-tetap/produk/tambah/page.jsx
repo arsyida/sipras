@@ -107,7 +107,7 @@ export default function TambahProdukPage() {
         try {
             await createProduct(formData);
             alert('Produk baru berhasil ditambahkan!');
-            router.push('/inventaris/produk'); // Kembali ke halaman daftar produk
+            router.push('/inventaris-tetap/produk'); // Kembali ke halaman daftar produk
 
         } catch (err) {
             console.error("Gagal menyimpan data produk:", err);

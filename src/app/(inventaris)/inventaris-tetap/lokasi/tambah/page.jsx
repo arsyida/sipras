@@ -74,7 +74,7 @@ export default function TambahLokasiPage() {
       await createLocation(formData);
 
       alert("Lokasi baru berhasil ditambahkan!");
-      router.push("/inventaris/lokasi"); // Kembali ke halaman daftar lokasi
+      router.push("/inventaris-tetap/lokasi"); // Kembali ke halaman daftar lokasi
     } catch (err) {
       console.error("Gagal menyimpan data:", err);
       const errorMessage =

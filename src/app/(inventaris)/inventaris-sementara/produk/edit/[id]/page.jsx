@@ -111,7 +111,7 @@ export default function EditConsumableProductPage() {
         try {
             await updateConsumableProduct(productId, formData);
             showSnackbar('Produk berhasil diperbarui!', 'success');
-            router.push('/inventaris-habis-pakai/produk');
+            router.push('/inventaris-sementara/produk');
 
         } catch (err) {
             showSnackbar(err.message || "Terjadi kesalahan.", 'error');

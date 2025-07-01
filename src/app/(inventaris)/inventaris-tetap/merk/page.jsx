@@ -98,8 +98,8 @@ export default function BrandPage() {
     }));
   };
 
-  const handleAddItem = () => router.push("/inventaris/merk/tambah");
-  const handleEdit = (item) => router.push(`/inventaris/merk/edit/${item._id}`);
+  const handleAddItem = () => router.push("/inventaris-tetap/merk/tambah");
+  const handleEdit = (item) => router.push(`/inventaris-tetap/merk/edit/${item._id}`);
 
   const handleDelete = async (item) => {
     if (

@@ -115,8 +115,8 @@ export default function ConsumableProductPage() {
     }));
   };
 
-  const handleAddItem = () => router.push("/inventaris-tidak-tetap/produk/tambah");
-  const handleEdit = (item) => router.push(`/inventaris-tidak-tetap/produk/edit/${item._id}`);
+  const handleAddItem = () => router.push("/inventaris-sementara/produk/tambah");
+  const handleEdit = (item) => router.push(`/inventaris-sementara/produk/edit/${item._id}`);
 
   const handleDelete = (item) => {
     showConfirmation(

@@ -133,9 +133,9 @@ export default function InventarisLokasiPage() {
     }));
   };
   
-  const handleAddItem = () => router.push("/inventaris/lokasi/tambah");
+  const handleAddItem = () => router.push("/inventaris-tetap/lokasi/tambah");
   const handleGenerateReport = () => console.log("Membuat laporan lokasi...");
-  const handleEdit = (item) => router.push(`/inventaris/lokasi/edit/${item._id}`);
+  const handleEdit = (item) => router.push(`/inventaris-tetap/lokasi/edit/${item._id}`);
 
   const handleDelete = async (item) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus lokasi "${item.name}"?`)) {

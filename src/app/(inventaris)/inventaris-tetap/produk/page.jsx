@@ -124,8 +124,8 @@ export default function ProductPage() {
     }));
   };
 
-  const handleAddItem = () => router.push("/inventaris/produk/tambah");
-  const handleEdit = (item) => router.push(`/inventaris/produk/edit/${item._id}`);
+  const handleAddItem = () => router.push("/inventaris-tetap/produk/tambah");
+  const handleEdit = (item) => router.push(`/inventaris-tetap/produk/edit/${item._id}`);
 
   const handleDelete = async (item) => {
     if (window.confirm(`Yakin ingin menghapus produk "${item.name} - ${item.brand?.name || ''}"?`)) {

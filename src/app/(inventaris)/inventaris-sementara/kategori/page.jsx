@@ -103,8 +103,8 @@ export default function CategoryPage() {
     }));
   };
 
-  const handleAddItem = () => router.push("/inventaris/kategori/tambah");
-  const handleEdit = (item) => router.push(`/inventaris/kategori/edit/${item._id}`);
+  const handleAddItem = () => router.push("/inventaris-sementara/kategori/tambah");
+  const handleEdit = (item) => router.push(`/inventaris-sementara/kategori/edit/${item._id}`);
 
   const handleDelete = (item) => {
     showConfirmation(

@@ -53,7 +53,7 @@ export default function TambahMerkPage() {
             await createBrand(formData);
             
             alert('Merk baru berhasil ditambahkan!');
-            router.push('/inventaris/merk'); // Kembali ke halaman daftar merk
+            router.push('/inventaris-tetap/merk'); // Kembali ke halaman daftar merk
 
         } catch (err) {
             console.error("Gagal menyimpan data:", err);

@@ -89,7 +89,7 @@ export default function EditLocationPage() {
             await updateLocation(locationId, formData);
             
             alert('Lokasi berhasil diperbarui!');
-            router.push('/inventaris/lokasi'); // Kembali ke halaman daftar lokasi
+            router.push('/inventaris-tetap/lokasi'); // Kembali ke halaman daftar lokasi
 
         } catch (err) {
             console.error("Gagal memperbarui data:", err);

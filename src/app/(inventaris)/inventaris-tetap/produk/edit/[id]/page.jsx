@@ -130,7 +130,7 @@ export default function EditProductPage() {
         try {
             await updateProduct(productId, formData);
             alert('Produk berhasil diperbarui!');
-            router.push('/inventaris/produk'); // Kembali ke halaman daftar produk
+            router.push('/inventaris-tetap/produk'); // Kembali ke halaman daftar produk
 
         } catch (err) {
             console.error("Gagal memperbarui data:", err);

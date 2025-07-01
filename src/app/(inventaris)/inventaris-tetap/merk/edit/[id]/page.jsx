@@ -78,7 +78,7 @@ export default function EditBrandPage() {
         try {
             await updateBrand(brandId, formData);
             alert('Merk berhasil diperbarui!');
-            router.push('/inventaris/merk'); // Kembali ke halaman daftar merk
+            router.push('/inventaris-tetap/merk'); // Kembali ke halaman daftar merk
 
         } catch (err) {
             console.error("Gagal memperbarui data:", err);

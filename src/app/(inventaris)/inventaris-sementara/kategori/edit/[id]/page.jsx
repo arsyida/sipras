@@ -54,7 +54,7 @@ export default function EditKategoriPage() {
         try {
             await updateCategory(categoryId, formData);
             alert('Kategori berhasil diperbarui!');
-            router.push('/inventaris/kategori');
+            router.push('/inventaris-sementara/kategori');
         } catch (err) {
             setSubmitError(err.message || "Terjadi kesalahan.");
             if (err.errors) setFieldErrors(err.errors);

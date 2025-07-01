@@ -52,7 +52,7 @@ export default function TambahKategoriPage() {
             showSnackbar('Kategori baru berhasil ditambahkan!', 'success');
             
             // Arahkan kembali ke halaman daftar kategori
-            router.push('/inventaris/kategori');
+            router.push('/inventaris-sementara/kategori');
 
         } catch (err) {
             // Tampilkan notifikasi error umum
