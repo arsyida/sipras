@@ -1,7 +1,8 @@
+// Lokasi: /app/api/inventaris-tetap/route.js (atau lokasi API route Anda)
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Sesuaikan path ini
 import { validateAdmin } from '@/lib/api/validate-admin';
 import { registerBulkAssets } from '@/lib/api/services/assetServices'; // Import service baru
 
@@ -18,23 +19,24 @@ export async function POST(request) {
     }
 
     const data = await request.json();
-    
+
     // Panggil service untuk bulk create
+    // Service ini akan menangani validasi input, generate serial number, dan transaksi
     const newAssets = await registerBulkAssets(data);
 
     return NextResponse.json({ success: true, data: newAssets, message: `${newAssets.length} aset berhasil dibuat.` }, { status: 201 });
 
   } catch (error) {
-    // Tangani error validasi dari Zod
+    // Tangani error validasi kustom dari service
     if (error.isValidationError) {
       return NextResponse.json({ success: false, message: error.message, errors: error.errors }, { status: 400 });
     }
-    // Tangani error duplikasi dari database
+    // Tangani error duplikasi kustom dari service
     if (error.isDuplicate) {
       return NextResponse.json({ success: false, message: error.message }, { status: 409 });
     }
-    
-    console.error("Error in POST /api/assets:", error);
+
+    console.error("Error in POST /api/inventaris-tetap (bulk asset creation):", error);
     return NextResponse.json({ success: false, message: "Terjadi kesalahan pada server." }, { status: 500 });
   }
 }

@@ -143,7 +143,7 @@ export default function TambahAsetPage() {
 
         const payload = {
             ...formData,
-            quantity: parseInt(formData.quantity, 10) || 1,
+            quantity: parseInt(formData.quantity) || 1,
             estimated_price: parseFloat(formData.estimated_price) || 0,
             ...(Object.keys(attributesObject).length > 0 && { attributes: attributesObject }),
         };

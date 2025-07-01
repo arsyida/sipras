@@ -83,58 +83,55 @@ export async function getPaginatedAssets({ page = 1, limit = 10, filters = {} })
   return { data, totalItems };
 }
 
-/**
- * Mendaftarkan beberapa aset sekaligus berdasarkan quantity.
- * @param {object} data - Data dari form bulk.
- * @returns {Promise<Array>} Array dari dokumen aset yang baru dibuat.
- */
 export async function registerBulkAssets(data) {
-  const validation = assetBulkSchema.safeParse(data);
-  if (!validation.success) {
-    const validationError = new Error('Input tidak valid.');
-    validationError.isValidationError = true;
-    validationError.errors = validation.error.flatten().fieldErrors;
-    throw validationError;  
-  }
-  
-  const { quantity, product: productId, location: locationId, ...commonData } = validation.data;
-  
-  await connectToDatabase();
+  await connectToDatabase(); // Pastikan koneksi database aktif
 
-  // Hanya perlu menghitung jumlah aset yang ada untuk menentukan urutan berikutnya.
-  const assetCountInLocation = await Asset.countDocuments({ 
-    product: new mongoose.Types.ObjectId(productId), 
-    location: new mongoose.Types.ObjectId(locationId) 
-  });
-  
-  const assetsToCreate = [];
-  
-  // Perulangan untuk mempersiapkan setiap dokumen aset baru
-  for (let i = 0; i < quantity; i++) {
-    const nextSequence = assetCountInLocation + i + 1;
-    
-    // ✅ Logika pembuatan nomor seri didelegasikan ke fungsi utilitas.
-    // Fungsi ini bertanggung jawab untuk mengambil detail produk/lokasi dan membuat nomor seri.
-    const newSerialNumber = await generateSerialNumber(productId, locationId);
+  const { productId, locationId, quantity, ...otherAssetDetails } = data;
 
-    assetsToCreate.push({
-      ...commonData,
-      product: productId,
-      location: locationId,
-      serial_number: newSerialNumber, // Gunakan nomor seri yang di-generate
-    });
+  // --- Validasi Input Awal ---
+  if (!productId || !locationId || typeof quantity !== 'number' || quantity <= 0) {
+    console.log(productId,locationId,)
+    const error = new Error('Data input tidak lengkap atau kuantitas tidak valid.');
+    error.isValidationError = true; // Tandai sebagai error validasi
+    error.errors = {
+      productId: !productId ? 'Product ID is required.' : undefined,
+      locationId: !locationId ? 'Location ID is required.' : undefined,
+      quantity: (typeof quantity !== 'number' || quantity <= 0) ? 'Quantity must be a positive number.' : undefined,
+    };
+    throw error;
   }
+
 
   try {
-    const createdAssets = await Asset.insertMany(assetsToCreate, { ordered: true });
+    const createdAssets = await runInTransaction(async (session) => {
+      const newAssets = [];
+      for (let i = 0; i < quantity; i++) {
+        // Hasilkan serial number unik untuk setiap aset dalam transaksi
+        const serialNumber = await generateSerialNumber(productId, locationId, session); // Lewatkan session
+
+        const newAsset = new Asset({
+          serial_number: serialNumber,
+          product: productId,
+          location: locationId,
+          ...otherAssetDetails, // Sertakan detail aset lainnya dari payload
+        });
+
+        await newAsset.save({ session }); // Simpan aset dalam transaksi
+        newAssets.push(newAsset);
+      }
+      return newAssets;
+    });
+
     return createdAssets;
+
   } catch (error) {
-    if (error.code === 11000) {
-      const duplicateError = new Error(`Gagal membuat aset. Nomor Seri yang digenerate sudah ada.`);
-      duplicateError.isDuplicate = true;
-      throw duplicateError;
+    console.error("Error in registerBulkAssets service:", error);
+    if (error.code === 11000) { // MongoDB duplicate key error
+      const err = new Error('Terdeteksi nomor seri duplikat. Pastikan kombinasi produk (kode) dan lokasi unik untuk penomoran seri.');
+      err.isDuplicate = true; // Tandai sebagai error duplikasi
+      throw err;
     }
-    throw error;
+    throw error; // Lempar error asli jika bukan duplikasi atau validasi
   }
 }
 

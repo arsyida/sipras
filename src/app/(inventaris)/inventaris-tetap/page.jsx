@@ -114,7 +114,7 @@ export default function InventarisAgregatPage() {
       if (!asset.product || !asset.location) return;
 
       // Kunci unik untuk agregasi adalah kombinasi produk dan lokasi
-      const key = `${asset.product._id}-${asset.location._id}`;
+      const key = `${asset.product._id}-${asset.location._id}-${asset.condition}`;
 
       if (aggregationMap[key]) {
         aggregationMap[key].jumlah += 1; // Tambah jumlahnya
