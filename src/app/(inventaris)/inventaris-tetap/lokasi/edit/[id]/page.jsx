@@ -95,7 +95,7 @@ export default function EditLocationPage() {
             router.push('/inventaris-tetap/lokasi'); // Kembali ke halaman daftar lokasi
 
         } catch (err) {
-            showSnackBarr(err.message || "Gagal memperbarui data:", "error");
+            showSnackBar(err.message || "Gagal memperbarui data:", "error");
             const errorMessage = err.message || "Terjadi kesalahan yang tidak diketahui.";
             setSubmitError(errorMessage);
             // Jika ada error validasi dari Zod, tampilkan di field yang relevan

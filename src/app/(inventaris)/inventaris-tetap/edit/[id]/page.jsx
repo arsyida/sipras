@@ -21,7 +21,7 @@ import { useSnackbar } from "@/components/providers/SnackbarProvider";
  */
 export default function EditAssetPage() {
 
-  const {showSnackBar} = useSnackbar()
+  const {showSnackbar} = useSnackbar()
   const router = useRouter();
   const params = useParams();
   const assetId = params.id;
@@ -210,10 +210,10 @@ export default function EditAssetPage() {
 
     try {
       await updateAsset(assetId, dataToSubmit);
-      showSnackBar("Aset berhasil diperbarui!", "success");
+      showSnackbar("Aset berhasil diperbarui!", "success");
       router.push("/inventaris-tetap/detail");
     } catch (err) {
-      showSnackBar(err.message || "Gagal memperbarui data:", "error");
+      showSnackbar(err.message || "Gagal memperbarui data:", "error");
       const errorMessage =
         err.message || "Terjadi kesalahan yang tidak diketahui.";
       setSubmitError(errorMessage);

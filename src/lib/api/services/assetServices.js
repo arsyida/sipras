@@ -101,34 +101,27 @@ export async function registerBulkAssets(data) {
   
   await connectToDatabase();
 
-  const [product, location, assetCountInLocation] = await Promise.all([
-    Product.findById(productId).select('product_code').lean(),
-    Location.findById(locationId).select('building floor name').lean(),
-    Asset.countDocuments({ 
-      product: new mongoose.Types.ObjectId(productId), 
-      location: new mongoose.Types.ObjectId(locationId) 
-    })
-  ]);
-
-  if (!product || !product.product_code) throw new Error(`Produk dengan ID ${productId} tidak valid.`);
-  if (!location) throw new Error(`Lokasi dengan ID ${locationId} tidak valid.`);
-
-  const roomNameMatch = location.name.match(/^\d+/);
-  const roomNumber = roomNameMatch ? roomNameMatch[0] : 'N/A';
-  const prefix = `G${location.building}/L${location.floor}/R${roomNumber}/${product.product_code}`;
-
+  // Hanya perlu menghitung jumlah aset yang ada untuk menentukan urutan berikutnya.
+  const assetCountInLocation = await Asset.countDocuments({ 
+    product: new mongoose.Types.ObjectId(productId), 
+    location: new mongoose.Types.ObjectId(locationId) 
+  });
+  
   const assetsToCreate = [];
   
+  // Perulangan untuk mempersiapkan setiap dokumen aset baru
   for (let i = 0; i < quantity; i++) {
     const nextSequence = assetCountInLocation + i + 1;
-    const paddedSequence = String(nextSequence).padStart(3, '0');
-    const newSerialNumber = `${prefix}${paddedSequence}`;
+    
+    // ✅ Logika pembuatan nomor seri didelegasikan ke fungsi utilitas.
+    // Fungsi ini bertanggung jawab untuk mengambil detail produk/lokasi dan membuat nomor seri.
+    const newSerialNumber = await generateSerialNumber(productId, locationId);
 
     assetsToCreate.push({
       ...commonData,
       product: productId,
       location: locationId,
-      serial_number: newSerialNumber,
+      serial_number: newSerialNumber, // Gunakan nomor seri yang di-generate
     });
   }
 
